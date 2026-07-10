@@ -1,0 +1,28 @@
+# tests/cmock.yml
+:cmock:
+  # Where to write generated mock files
+  :mock_path: tests/unit/mocks
+
+  # Prefix for generated mock filenames
+  # mock_uart.h / mock_uart.c for uart.h
+  :mock_prefix: mock_
+
+  # Which plugins to enable
+  :plugins:
+    - :ignore          # allow ignoring calls to a mock
+    - :ignore_arg      # allow ignoring specific arguments
+    - :return_thru_ptr # allow returning values through pointer args
+    - :callback        # allow registering a callback instead of a return value
+
+  # Where CMock looks for headers to mock
+  :includes:
+    - bsp/include
+    - app/include
+    - ml/include
+
+  # Treat these as enforced — mock will fail if called unexpected number of times
+  :enforce_strict_ordering: true
+
+  # C standard
+  :strippables:
+    - (?:static\s+inline)

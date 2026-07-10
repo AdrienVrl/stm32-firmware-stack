@@ -4,27 +4,27 @@
 # Covers: STM32 toolchain, OpenOCD, GDB, CMake, static analysis, testing,
 #         documentation, code quality tools, Python tools, and CI helpers
 # =============================================================================
- 
+
 set -euo pipefail
- 
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
- 
+
 log()    { echo -e "${GREEN}[+]${NC} $*"; }
 info()   { echo -e "${BLUE}[i]${NC} $*"; }
 warn()   { echo -e "${YELLOW}[!]${NC} $*"; }
 error()  { echo -e "${RED}[x]${NC} $*"; exit 1; }
- 
+
 check_root() {
     if [[ $EUID -eq 0 ]]; then
         error "Do not run this script as root. It will call sudo when needed."
     fi
 }
- 
+
 # =============================================================================
 # 1. SYSTEM UPDATE
 # =============================================================================
@@ -33,24 +33,24 @@ update_system() {
     sudo apt-get update -qq
     sudo apt-get upgrade -y -qq
 }
- 
+
 # =============================================================================
 # 2. ARM CROSS-COMPILATION TOOLCHAIN
 # =============================================================================
 install_toolchain() {
     log "Installing ARM cross-compilation toolchain..."
- 
+
     sudo apt-get install -y \
         gcc-arm-none-eabi \
         gdb-multiarch \
         binutils-arm-none-eabi \
         libnewlib-arm-none-eabi \
         libstdc++-arm-none-eabi-newlib
- 
+
     # Verify installation
     arm-none-eabi-gcc --version | head -1 && log "arm-none-eabi-gcc OK"
     arm-none-eabi-gdb --version | head -1 && log "arm-none-eabi-gdb OK"
- 
+
     # gdb-multiarch is preferred for FreeRTOS thread awareness plugins
     # Symlink if needed for scripts that call arm-none-eabi-gdb directly
     if ! command -v arm-none-eabi-gdb &>/dev/null; then
@@ -58,23 +58,23 @@ install_toolchain() {
         log "Symlinked gdb-multiarch -> arm-none-eabi-gdb"
     fi
 }
- 
+
 # =============================================================================
 # 3. BUILD SYSTEM
 # =============================================================================
 install_build_tools() {
     log "Installing build tools (CMake, Ninja, Make)..."
- 
+
     sudo apt-get install -y \
         cmake \
         ninja-build \
         make
- 
+
     # Check CMake version — need 3.20+ for modern embedded CMake patterns
     CMAKE_VERSION=$(cmake --version | head -1 | awk '{print $3}')
     CMAKE_MAJOR=$(echo "$CMAKE_VERSION" | cut -d. -f1)
     CMAKE_MINOR=$(echo "$CMAKE_VERSION" | cut -d. -f2)
- 
+
     if [[ "$CMAKE_MAJOR" -lt 3 ]] || { [[ "$CMAKE_MAJOR" -eq 3 ]] && [[ "$CMAKE_MINOR" -lt 20 ]]; }; then
         warn "CMake $CMAKE_VERSION is older than 3.20. Installing latest via pip..."
         pip3 install --user cmake --upgrade
@@ -83,26 +83,26 @@ install_build_tools() {
     else
         log "CMake $CMAKE_VERSION OK"
     fi
- 
+
     ninja --version && log "Ninja OK"
 }
- 
+
 # =============================================================================
 # 4. OpenOCD — Flash and debug over SWD/JTAG
 # =============================================================================
 install_openocd() {
     log "Installing OpenOCD..."
- 
+
     sudo apt-get install -y openocd
- 
+
     # Verify and show version
     openocd --version 2>&1 | head -1 && log "OpenOCD OK"
- 
+
     # Add user to plugdev and dialout groups for USB/serial access without sudo
     sudo usermod -aG plugdev "$USER"
     sudo usermod -aG dialout "$USER"
     log "Added $USER to plugdev and dialout groups (re-login required to take effect)"
- 
+
     # Install udev rules for ST-Link
     if [[ ! -f /etc/udev/rules.d/49-stlinkv2.rules ]]; then
         log "Installing ST-Link udev rules..."
@@ -129,68 +129,68 @@ EOF
         log "ST-Link udev rules installed"
     fi
 }
- 
+
 # =============================================================================
 # 5. STATIC ANALYSIS TOOLS
 # =============================================================================
 install_static_analysis() {
     log "Installing static analysis tools..."
- 
+
     sudo apt-get install -y \
         cppcheck \
         clang \
         clang-tidy \
         clang-format
- 
+
     cppcheck --version && log "cppcheck OK"
     clang-tidy --version | head -1 && log "clang-tidy OK"
     clang-format --version && log "clang-format OK"
 }
- 
+
 # =============================================================================
 # 6. UNIT TESTING — Unity + CMock
 # =============================================================================
 install_unity_cmock() {
     log "Installing Unity and CMock (C unit testing frameworks)..."
- 
+
     UNITY_DIR="$HOME/embedded-tools/Unity"
     CMOCK_DIR="$HOME/embedded-tools/CMock"
- 
+
     mkdir -p "$HOME/embedded-tools"
- 
+
     if [[ ! -d "$UNITY_DIR" ]]; then
         git clone --depth 1 https://github.com/ThrowTheSwitch/Unity.git "$UNITY_DIR"
         log "Unity cloned to $UNITY_DIR"
     else
         info "Unity already exists at $UNITY_DIR, skipping"
     fi
- 
+
     if [[ ! -d "$CMOCK_DIR" ]]; then
         git clone --depth 1 https://github.com/ThrowTheSwitch/CMock.git "$CMOCK_DIR"
         log "CMock cloned to $CMOCK_DIR"
     else
         info "CMock already exists at $CMOCK_DIR, skipping"
     fi
- 
+
     # Ruby is required for CMock's mock generation scripts
     sudo apt-get install -y ruby
     ruby --version && log "Ruby (for CMock codegen) OK"
 }
- 
+
 # =============================================================================
 # 7. DOCUMENTATION — Doxygen + Graphviz
 # =============================================================================
 install_documentation_tools() {
     log "Installing documentation tools..."
- 
+
     sudo apt-get install -y \
         doxygen \
         graphviz
- 
+
     doxygen --version && log "Doxygen OK"
     dot -V 2>&1 | head -1 && log "Graphviz OK"
 }
- 
+
 # =============================================================================
 # 8. PYTHON ENVIRONMENT
 # =============================================================================
@@ -217,34 +217,34 @@ install_python_tools() {
   deactivate
 
 }
- 
+
 # =============================================================================
 # 9. SERIAL TERMINAL — for UART debugging
 # =============================================================================
 install_serial_tools() {
     log "Installing serial terminal tools..."
- 
+
     sudo apt-get install -y \
         minicom \
         picocom \
         screen
- 
+
     log "Serial tools OK — use 'picocom -b 115200 /dev/ttyACM0' for Nucleo virtual COM"
 }
- 
+
 # =============================================================================
 # 10. VERSION CONTROL EXTRAS
 # =============================================================================
 install_git_tools() {
     log "Installing Git and extras..."
- 
+
     sudo apt-get install -y \
         git \
         git-lfs
- 
+
     git --version && log "Git OK"
     git lfs version && log "Git LFS OK"
- 
+
     # Configure useful Git globals if not already set
     if [[ -z "$(git config --global user.name 2>/dev/null)" ]]; then
         warn "Git user.name not set. Set it with: git config --global user.name 'Your Name'"
@@ -252,21 +252,21 @@ install_git_tools() {
     if [[ -z "$(git config --global user.email 2>/dev/null)" ]]; then
         warn "Git user.email not set. Set it with: git config --global user.email 'you@example.com'"
     fi
- 
+
     # Set up useful Git aliases
     git config --global alias.lg "log --oneline --graph --decorate --all"
     git config --global alias.st "status --short"
     git config --global alias.unstage "reset HEAD --"
     log "Git aliases configured (lg, st, unstage)"
 }
- 
+
 # =============================================================================
 # 11. VS CODE EXTENSIONS (optional — only if VS Code is installed)
 # =============================================================================
 install_vscode_extensions() {
     if command -v code &>/dev/null; then
         log "VS Code detected — installing recommended extensions..."
- 
+
         EXTENSIONS=(
             "ms-vscode.cpptools"              # C/C++ IntelliSense
             "ms-vscode.cmake-tools"           # CMake integration
@@ -278,7 +278,7 @@ install_vscode_extensions() {
             "mhutchie.git-graph"              # Visual Git graph
             "eamodio.gitlens"                 # Git blame and history
         )
- 
+
         for EXT in "${EXTENSIONS[@]}"; do
             code --install-extension "$EXT" --force 2>/dev/null && log "Installed: $EXT"
         done
@@ -287,33 +287,35 @@ install_vscode_extensions() {
         info "Install VS Code from https://code.visualstudio.com/ then re-run this block"
     fi
 }
- 
+
 # =============================================================================
 # 12. MISC UTILITIES
 # =============================================================================
 install_misc_utils() {
     log "Installing miscellaneous utilities..."
- 
+
+    # xxd, hexdump: inspecting binary firmware files
+    # stlink-tools:  st-flash / st-util, an alternative to OpenOCD for simple flashing
     sudo apt-get install -y \
         curl \
         wget \
         unzip \
-        xxd \        # Hex dump — useful for inspecting binary firmware files
-        hexdump \    # Alternative hex dump
-        stlink-tools # st-flash and st-util (alternative to OpenOCD for simple flashing)
- 
+        xxd \
+        hexdump \
+        stlink-tools
+
     st-flash --version 2>&1 | head -1 && log "st-flash OK"
 }
- 
+
 # =============================================================================
 # 13. GENERATE PROJECT CONFIG FILES
 # =============================================================================
 generate_config_files() {
     log "Generating project configuration file templates..."
- 
+
     CONFIG_DIR="$HOME/embedded-tools/templates"
     mkdir -p "$CONFIG_DIR"
- 
+
     # -------------------------------------------------------------------------
     # .clang-format
     # -------------------------------------------------------------------------
@@ -330,7 +332,7 @@ SortIncludes: true
 IncludeBlocks: Regroup
 EOF
     log "Generated .clang-format -> $CONFIG_DIR/.clang-format"
- 
+
     # -------------------------------------------------------------------------
     # .clang-tidy
     # -------------------------------------------------------------------------
@@ -344,9 +346,9 @@ Checks: >
   readability-identifier-naming,
   -cert-err34-c,
   -bugprone-easily-swappable-parameters
- 
+
 WarningsAsErrors: ""
- 
+
 CheckOptions:
   - key: readability-identifier-naming.FunctionCase
     value: lower_case
@@ -360,7 +362,7 @@ CheckOptions:
     value: _t
 EOF
     log "Generated .clang-tidy -> $CONFIG_DIR/.clang-tidy"
- 
+
     # -------------------------------------------------------------------------
     # .pre-commit-config.yaml
     # -------------------------------------------------------------------------
@@ -376,7 +378,7 @@ repos:
         args: ['--maxkb=500']
       - id: mixed-line-ending
         args: ['--fix=lf']
- 
+
   - repo: https://github.com/pre-commit/mirrors-clang-format
     rev: v17.0.6
     hooks:
@@ -384,7 +386,7 @@ repos:
         types: [c, c++]
 EOF
     log "Generated .pre-commit-config.yaml -> $CONFIG_DIR/.pre-commit-config.yaml"
- 
+
     # -------------------------------------------------------------------------
     # .gitignore for embedded CMake project
     # -------------------------------------------------------------------------
@@ -398,41 +400,41 @@ cmake-build-*/
 *.map
 *.lst
 *.axf
- 
+
 # Generated files
 *.d
 *.o
 *.a
 *.su
- 
+
 # IDE
 .vscode/
 .idea/
 *.ioc
 *.ioc.bak
- 
+
 # CMake
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 install_manifest.txt
 compile_commands.json
- 
+
 # Doxygen
 docs/html/
 docs/latex/
- 
+
 # Python
 __pycache__/
 *.pyc
 .venv/
- 
+
 # OS
 .DS_Store
 Thumbs.db
 EOF
     log "Generated .gitignore -> $CONFIG_DIR/.gitignore"
- 
+
     # -------------------------------------------------------------------------
     # Doxyfile (minimal)
     # -------------------------------------------------------------------------
@@ -458,60 +460,60 @@ WARN_IF_UNDOCUMENTED   = YES
 QUIET                  = YES
 EOF
     log "Generated Doxyfile -> $CONFIG_DIR/Doxyfile"
- 
+
     # -------------------------------------------------------------------------
     # GitHub Actions workflow
     # -------------------------------------------------------------------------
     mkdir -p "$CONFIG_DIR/.github/workflows"
     cat > "$CONFIG_DIR/.github/workflows/build.yml" <<'EOF'
 name: Build and Analyze
- 
+
 on:
   push:
     branches: [ main, develop, 'phase/**' ]
   pull_request:
     branches: [ main ]
- 
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
- 
+
       - name: Install ARM toolchain
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y gcc-arm-none-eabi binutils-arm-none-eabi \
             libnewlib-arm-none-eabi cmake ninja-build cppcheck
- 
+
       - name: Configure (bootloader)
         run: cmake -B build/bootloader -S bootloader -G Ninja \
                -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake
- 
+
       - name: Build (bootloader)
         run: cmake --build build/bootloader
- 
+
       - name: Configure (application)
         run: cmake -B build/app -S app -G Ninja \
                -DCMAKE_TOOLCHAIN_FILE=cmake/arm-none-eabi.cmake
- 
+
       - name: Build (application)
         run: cmake --build build/app
- 
+
       - name: Binary size report
         run: |
           echo "### Binary Sizes" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           arm-none-eabi-size build/bootloader/*.elf build/app/*.elf >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
- 
+
       - name: Static analysis (cppcheck)
         run: |
           cppcheck --enable=warning,performance,portability \
                    --error-exitcode=1 \
                    --suppress=missingIncludeSystem \
                    src/ bsp/
- 
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -522,11 +524,11 @@ jobs:
             build/**/*.hex
 EOF
     log "Generated GitHub Actions workflow -> $CONFIG_DIR/.github/workflows/build.yml"
- 
+
     info "All config templates saved to $CONFIG_DIR"
     info "Copy them into your project root when you create it"
 }
- 
+
 # =============================================================================
 # 14. SUMMARY
 # =============================================================================
@@ -571,20 +573,20 @@ print_summary() {
     echo "  doxygen --version"
     echo ""
 }
- 
+
 # =============================================================================
 # MAIN
 # =============================================================================
 main() {
     check_root
- 
+
     echo -e "${BLUE}"
     echo "  ╔═══════════════════════════════════════════════════╗"
     echo "  ║   STM32 Embedded Dev Environment Setup            ║"
     echo "  ║   Ubuntu / Debian                                 ║"
     echo "  ╚═══════════════════════════════════════════════════╝"
     echo -e "${NC}"
- 
+
     update_system
     install_toolchain
     install_build_tools
@@ -600,6 +602,5 @@ main() {
     generate_config_files
     print_summary
 }
- 
+
 main "$@"
- 

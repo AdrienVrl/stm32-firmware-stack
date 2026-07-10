@@ -1,0 +1,52 @@
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  cert-*,
+  -cert-dcl37-c,
+  -cert-dcl51-cpp,
+  clang-analyzer-*,
+  misc-*,
+  -misc-unused-parameters,
+  performance-*,
+  portability-*,
+  readability-identifier-naming,
+  readability-function-cognitive-complexity,
+  readability-magic-numbers,
+  -readability-magic-numbers
+
+WarningsAsErrors: >
+  bugprone-use-after-move,
+  bugprone-infinite-loop,
+  bugprone-integer-division,
+  bugprone-suspicious-memset-usage,
+  clang-analyzer-core.NullDereference,
+  clang-analyzer-core.UndefinedBinaryOperatorResult,
+  clang-analyzer-deadcode.DeadStores
+
+HeaderFilterRegex: '(src|include|bsp|app|bootloader)\/.*\.(h|hpp)$'
+
+CheckOptions:
+  # Naming conventions for embedded C
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.GlobalVariablePrefix
+    value: g_
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.EnumConstantCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.TypedefCase
+    value: lower_case
+  - key: readability-identifier-naming.TypedefSuffix
+    value: _t
+  - key: readability-identifier-naming.StructCase
+    value: lower_case
+  - key: readability-identifier-naming.StructSuffix
+    value: _t
+
+  # Cognitive complexity threshold — lower than default for embedded
+  - key: readability-function-cognitive-complexity.Threshold
+    value: '15'

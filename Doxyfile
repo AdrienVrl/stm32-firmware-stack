@@ -1,0 +1,65 @@
+# Project identity
+PROJECT_NAME           = "STM32 Firmware Stack"
+PROJECT_NUMBER         = 1.0.0
+PROJECT_BRIEF          = "Bare-metal BSP, FreeRTOS, bootloader and edge inference"
+
+# Where Doxygen looks for source files
+# List every module directory that has public headers
+INPUT                  = bsp/include \
+                         app/include \
+                         bootloader/include \
+                         ml/include \
+                         core/include \
+                         docs/
+
+# Also scan subdirectories recursively
+RECURSIVE              = YES
+
+# Only document symbols that have Doxygen comments.
+# Set to NO to document everything including undocumented symbols
+# (useful for seeing what you haven't documented yet)
+EXTRACT_ALL            = NO
+
+# Include static functions and variables in the output
+EXTRACT_STATIC         = YES
+
+# Where to write the generated documentation
+OUTPUT_DIRECTORY       = build/docs
+
+# Generate HTML output (the most useful format)
+GENERATE_HTML          = YES
+HTML_OUTPUT            = html
+
+# Disable LaTeX — you don't need a PDF manual
+GENERATE_LATEX         = NO
+
+# Enable call graphs and dependency graphs (requires graphviz)
+CALL_GRAPH             = YES
+CALLER_GRAPH           = YES
+HAVE_DOT               = YES
+DOT_IMAGE_FORMAT       = svg    # SVG scales better than PNG
+
+# Parse markdown files as documentation pages
+# This is what makes your docs/ .md files appear in the output
+USE_MDFILE_AS_MAINPAGE = docs/README.md
+MDFILE_EXTENSIONS      = .md
+
+# Show include dependencies between files
+INCLUDE_GRAPH          = YES
+INCLUDED_BY_GRAPH      = YES
+
+# Warn about undocumented parameters — useful to enforce documentation
+WARN_IF_UNDOCUMENTED   = YES
+WARN_NO_PARAMDOC       = YES
+
+# Write warnings to a file so CI can check them
+WARN_LOGFILE           = build/docs/doxygen_warnings.txt
+
+# File patterns to scan
+FILE_PATTERNS          = *.c *.h *.md
+
+# Exclude generated and third-party code
+EXCLUDE                = third_party/ \
+                         build/ \
+                         ml/model/network.c \
+                         ml/model/network.h

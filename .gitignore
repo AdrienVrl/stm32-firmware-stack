@@ -1,4 +1,36 @@
+# Build artifacts
 build/
+cmake-build-*/
+
+# Compiled outputs
 *.elf
 *.bin
+*.hex
 *.map
+*.lst
+*.axf
+
+# Generated documentation
+docs/generated/
+
+# Static analysis reports
+cppcheck-report/
+compile_commands.json
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Pre-commit
+.pre-commit-cache/
+
+# OpenOCD
+*.cfg.bak

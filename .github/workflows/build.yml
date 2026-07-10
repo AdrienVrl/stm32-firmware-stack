@@ -1,0 +1,176 @@
+name: Build
+
+# Trigger on every push and on every pull request targeting main.
+# This means every branch push is checked, and merging to main
+# requires a passing build.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-arm:
+    name: ARM Firmware Build
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Check out the repository ────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive   # needed if FreeRTOS or CMSIS are git submodules
+
+      # ── 2. Install the ARM toolchain ────────────────────────────────────────
+      - name: Install ARM toolchain
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y \
+            gcc-arm-none-eabi \
+            binutils-arm-none-eabi \
+            ninja-build \
+            cmake
+
+      # ── 3. Verify toolchain installation ───────────────────────────────────
+      - name: Print toolchain version
+        run: arm-none-eabi-gcc --version
+
+      # ── 4. Configure CMake for ARM ──────────────────────────────────────────
+      - name: Configure (ARM Debug)
+        run: |
+          cmake -B build/arm \
+                -DTARGET_PLATFORM=arm \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -G Ninja
+
+      # ── 5. Build all ARM targets ────────────────────────────────────────────
+      - name: Build (ARM Debug)
+        run: cmake --build build/arm --parallel
+
+      # ── 6. Capture binary sizes and save as artifact ────────────────────────
+      # This lets you track flash/RAM growth over time across commits.
+      - name: Report binary sizes
+        run: |
+          arm-none-eabi-size build/arm/firmware.elf   >> size_report.txt
+          arm-none-eabi-size build/arm/bootloader.elf >> size_report.txt
+          cat size_report.txt
+
+      - name: Upload size report
+        uses: actions/upload-artifact@v4
+        with:
+          name: size-report
+          path: size_report.txt
+
+      # ── 7. Upload binaries as artifacts ─────────────────────────────────────
+      - name: Upload firmware binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-binaries
+          path: |
+            build/arm/firmware.bin
+            build/arm/firmware.hex
+            build/arm/bootloader.bin
+            build/arm/bootloader.hex
+            build/arm/firmware.map
+            build/arm/bootloader.map
+
+      # ── 8. Also build Release to catch release-only issues ──────────────────
+      - name: Configure (ARM Release)
+        run: |
+          cmake -B build/arm-release \
+                -DTARGET_PLATFORM=arm \
+                -DCMAKE_BUILD_TYPE=Release \
+                -G Ninja
+
+      - name: Build (ARM Release)
+        run: cmake --build build/arm-release --parallel
+
+  build-host:
+    name: Host Unit Test Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install host toolchain
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y \
+            gcc \
+            ninja-build \
+            cmake \
+            gcovr           # for coverage reporting
+
+      # ── Configure and build host unit tests ─────────────────────────────────
+      - name: Configure (Host)
+        run: |
+          cmake -B build/host \
+                -DTARGET_PLATFORM=host \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -G Ninja
+
+      - name: Build (Host)
+        run: cmake --build build/host --parallel
+
+      # ── Run unit tests via CTest ─────────────────────────────────────────────
+      # CTest knows about all targets registered with add_test() in CMakeLists.
+      # --output-on-failure prints test output only when a test fails,
+      # keeping the log clean on success.
+      - name: Run unit tests
+        run: |
+          cd build/host
+          ctest --output-on-failure --parallel 4
+
+      # ── Generate coverage report ─────────────────────────────────────────────
+      # gcovr reads the .gcda files produced by the -fprofile-arcs flag
+      # in host.cmake and generates an HTML + XML coverage report.
+      - name: Generate coverage report
+        run: |
+          gcovr \
+            --root . \
+            --exclude tests/ \
+            --exclude third_party/ \
+            --xml  coverage.xml \
+            --html coverage.html \
+            --html-details coverage-details/ \
+            --print-summary
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage.xml
+            coverage.html
+            coverage-details/
+
+      # ── Fail if coverage drops below threshold ───────────────────────────────
+      # Start with a low threshold (50%) and raise it as you add more tests.
+      - name: Check coverage threshold
+        run: |
+          gcovr \
+            --root . \
+            --exclude tests/ \
+            --exclude third_party/ \
+            --fail-under-line 50
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y gcc ninja-build cmake ruby gcovr
+
+      - name: Regenerate mocks
+        run: ./tests/generate_mocks.sh
+
+      - name: Configure and build host tests
+        run: |
+          cmake -B build/host \
+                -DTARGET_PLATFORM=host \
+                -DCMAKE_BUILD_TYPE=Debug \
+                -G Ninja
+          cmake --build build/host --parallel
+
+      - name: Run unit tests
+        run: ctest --test-dir build/host --output-on-failure
