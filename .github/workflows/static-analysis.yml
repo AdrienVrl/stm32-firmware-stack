@@ -26,23 +26,36 @@ jobs:
       #                            cross-compiled code where stm32f4xx.h is
       #                            only available in the ARM sysroot)
       # -I                    : include paths so cppcheck resolves headers
+      # Guarded: only pass -I paths that exist, and only scan source dirs
+      # that actually contain a .c file — cppcheck errors out if given a
+      # missing or empty path. Self-activates as bsp/app/bootloader/ml grow.
       - name: Run cppcheck
         run: |
-          cppcheck \
-            --enable=all \
-            --error-exitcode=1 \
-            --inline-suppr \
-            --suppress=missingInclude \
-            --suppress=missingIncludeSystem \
-            -I bsp/include \
-            -I app/include \
-            -I core/include \
-            -I ml/include \
-            bsp/src/ \
-            app/src/ \
-            bootloader/src/ \
-            ml/src/ \
-            2>&1 | tee cppcheck_report.txt
+          include_flags=()
+          for dir in bsp/include app/include core/include ml/include; do
+            [ -d "$dir" ] && include_flags+=("-I$dir")
+          done
+
+          src_dirs=()
+          for dir in bsp/src app/src bootloader/src ml/src; do
+            if [ -d "$dir" ] && find "$dir" -name '*.c' -print -quit | grep -q .; then
+              src_dirs+=("$dir")
+            fi
+          done
+
+          if [ ${#src_dirs[@]} -eq 0 ]; then
+            echo "No source files yet — skipping cppcheck." | tee cppcheck_report.txt
+          else
+            cppcheck \
+              --enable=all \
+              --error-exitcode=1 \
+              --inline-suppr \
+              --suppress=missingInclude \
+              --suppress=missingIncludeSystem \
+              "${include_flags[@]}" \
+              "${src_dirs[@]}" \
+              2>&1 | tee cppcheck_report.txt
+          fi
 
       - name: Upload cppcheck report
         if: always()    # upload even if cppcheck failed, so you can read it
@@ -58,6 +71,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive   # tests/unity and tests/cmock are submodules,
+                                   # needed by tests/CMakeLists.txt
 
       - name: Install dependencies
         run: |
@@ -116,11 +132,21 @@ jobs:
       # --Werror   : exit with error if any file needs reformatting
       # This enforces that all committed code passes clang-format,
       # which the pre-commit hook should already guarantee locally.
+      # Guarded: `find` errors out (and fails the pipeline under pipefail) if
+      # any of these directories don't exist yet — only scan the ones that do.
       - name: Check formatting
         run: |
-          find bsp app bootloader ml core \
-            -name "*.c" -o -name "*.h" | \
-          xargs clang-format --dry-run --Werror
+          dirs=()
+          for d in bsp app bootloader ml core; do
+            [ -d "$d" ] && dirs+=("$d")
+          done
+
+          files=$(find "${dirs[@]}" -name "*.c" -o -name "*.h")
+          if [ -z "$files" ]; then
+            echo "No C sources yet — nothing to format-check."
+          else
+            echo "$files" | xargs clang-format --dry-run --Werror
+          fi
 
   doxygen:
     name: Doxygen
@@ -134,8 +160,13 @@ jobs:
         run: sudo apt-get install -y doxygen graphviz
 
       # Run Doxygen and capture warnings
+      # mkdir first: OUTPUT_DIRECTORY (build/docs) can't be created by
+      # Doxygen itself since build/ doesn't exist yet in this job (no cmake
+      # configure step runs here).
       - name: Run Doxygen
-        run: doxygen Doxyfile
+        run: |
+          mkdir -p build/docs
+          doxygen Doxyfile
 
       # Fail if there are any undocumented parameters or missing docs
       - name: Check for warnings
