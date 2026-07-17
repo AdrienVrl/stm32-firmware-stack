@@ -72,14 +72,14 @@ endfunction()
 
 # ── Helper: flash a binary via OpenOCD ───────────────────────────────────────
 # Usage: arm_add_flash_target(firmware 0x08000000)
-function(arm_add_flash_target target flash_address)
+function(arm_add_flash_target target flash_add)
   add_custom_target(
     flash_${target}
-    COMMAND openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c
-            "program ${CMAKE_BINARY_DIR}/${target}.bin
-                verify reset exit ${flash_address}"
+    COMMAND
+      openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c
+      "program ${CMAKE_BINARY_DIR}/${target}.bin verify reset exit ${flashadd}"
     DEPENDS ${target}
-    COMMENT "Flashing ${target} to ${flash_address}")
+    COMMENT "Flashing ${target} to ${flash_add}")
 endfunction()
 
 # ── Helper: bundle all post-build steps together ─────────────────────────────
@@ -102,11 +102,12 @@ function(arm_add_firmware)
     ARG # prefix for parsed variables
     "" # options (boolean flags, no value)
     "NAME;LINKER;FLASH_ADDR" # single-value keywords
-    "SOURCES;LIBS" # multi-value keywords
+    "SOURCES;LIBS;INCLUDES" # multi-value keywords
     ${ARGN} # arguments passed to the function
   )
 
   add_executable(${ARG_NAME} ${ARG_SOURCES})
+  target_include_directories(${ARG_NAME} PRIVATE ${ARG_INCLUDES})
 
   target_link_libraries(${ARG_NAME} PRIVATE ${ARG_LIBS})
 
