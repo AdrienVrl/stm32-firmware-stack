@@ -11,6 +11,7 @@
  *****************************************************************************/
 
 #include <stdint.h>
+#include <system_stm32f4xx.h>
 
 /*-----------------------------------------------------------------------*/
 /* Symbol from startup.c: the actual base address of the vector table,   */

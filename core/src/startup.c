@@ -7,6 +7,7 @@
  *****************************************************************************/
 
 #include <stdint.h>
+#include <system_stm32f4xx.h>
 
 /*-----------------------------------------------------------------------*/
 /* Symbols provided by the linker script (see linker.ld)                 */
@@ -20,7 +21,6 @@ extern uint32_t _estack; /* SRAM:  top of stack (initial SP value)      */
 
 /* Supplied by application / CMSIS */
 extern int main(void);
-extern void SystemInit(void);
 
 /*-----------------------------------------------------------------------*/
 /* Reset handler -- not weak: this is the real, single implementation.   */
@@ -305,6 +305,9 @@ __attribute__((section(".isr_vector"), used)) const VectorEntry g_pfnVectors[] =
 /*-----------------------------------------------------------------------*/
 void Reset_Handler(void)
 {
+    /* Clock tree / early hardware init (CMSIS system_stm32f4xx.c) */
+    SystemInit();
+
     uint32_t *src, *dst;
 
     /* Copy .data initial values from Flash (LMA) to SRAM (VMA) */
@@ -322,8 +325,6 @@ void Reset_Handler(void)
         *dst++ = 0;
     }
 
-    /* Clock tree / early hardware init (CMSIS system_stm32f4xx.c) */
-    SystemInit();
 
     /* Hand off to the application */
     (void)main();

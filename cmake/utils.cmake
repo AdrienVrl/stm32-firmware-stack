@@ -72,14 +72,14 @@ endfunction()
 
 # ── Helper: flash a binary via OpenOCD ───────────────────────────────────────
 # Usage: arm_add_flash_target(firmware 0x08000000)
-function(arm_add_flash_target target flash_add)
+function(arm_add_flash_target target flash_ad)
   add_custom_target(
     flash_${target}
     COMMAND
       openocd -f interface/stlink.cfg -f target/stm32f4x.cfg -c
-      "program ${CMAKE_BINARY_DIR}/${target}.bin verify reset exit ${flashadd}"
+      "program ${CMAKE_BINARY_DIR}/${target}.bin verify reset exit ${flash_ad}"
     DEPENDS ${target}
-    COMMENT "Flashing ${target} to ${flash_add}")
+    COMMENT "Flashing ${target} to ${flash_ad}")
 endfunction()
 
 # ── Helper: bundle all post-build steps together ─────────────────────────────
