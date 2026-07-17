@@ -18,3 +18,4 @@ You can now pass openocd commands:
 monitor reset halt
 info registers
 print $pc
+```
