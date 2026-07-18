@@ -107,12 +107,11 @@ static void PLL_ConfigError(void)
 /* PLL_PLLCFGR                                                           */
 /*-----------------------------------------------------------------------*/
 
-#define RCC_BASE    (0x40023800UL)
 #define RCC_PLLCFGR (*(volatile uint32_t *)(RCC_BASE + 0x04UL))
 
 #define PLL_M 4U // PLL_input = HSE / PLLM -> PLLM = HSE / PLL_input = 8 MHz / 2 MHz = 4
 #define PLL_P 2U // VCO_output = SYSCLK * PLL_P = 180 MHz * 2 = 360, and 100 <= 360 <= 420
-#define PLL_Q 7U // PLL_Q = round(VCO_output / 48 MHz) = round(360 MHz / 48 MHz) = 7
+#define PLL_Q 7U // PLL_Q = VCO_output / 48 MHz = 360 MHz / 48 MHz = 7.5, round to 7
 #define PLL_N                                                                                      \
     180U // VCO_output = PLL_input * PLLN -> PLLN = VCO_output / PLL_input = 360 MHz / 2 MHz = 180
 
@@ -129,8 +128,6 @@ static void PLL_ConfigError(void)
 /* PLL_CFGR                                                              */
 /*-----------------------------------------------------------------------*/
 
-#define RCC_BASE (0x40023800UL)
-#define RCC_CR   (*(volatile uint32_t *)(RCC_BASE + 0x00UL))
 #define RCC_CFGR (*(volatile uint32_t *)(RCC_BASE + 0x08UL))
 
 #define RCC_CR_PLLON  (1UL << 24)
@@ -155,6 +152,29 @@ static void PLL_ConfigError(void)
 #define RCC_CFGR_PPRE2_Pos  13U
 #define RCC_CFGR_PPRE2_Msk  (0x7UL << RCC_CFGR_PPRE2_Pos)
 #define RCC_CFGR_PPRE2_DIV2 (0x4UL << RCC_CFGR_PPRE2_Pos) // 180 MHz / 2 = 90 MHz = APB2_max
+
+/*-----------------------------------------------------------------------*/
+/* PWR                                                                   */
+/*-----------------------------------------------------------------------*/
+
+#define RCC_BASE          (0x40023800UL)
+#define RCC_APB1ENR       (*(volatile uint32_t *)(RCC_BASE + 0x40UL))
+#define RCC_APB1ENR_PWREN (1UL << 28)
+
+#define PWR_BASE (0x40007000UL)
+#define PWR_CR   (*(volatile uint32_t *)(PWR_BASE + 0x00UL))
+#define PWR_CSR  (*(volatile uint32_t *)(PWR_BASE + 0x04UL))
+
+#define PWR_CR_VOS_Pos    14U
+#define PWR_CR_VOS_Msk    (0x3UL << PWR_CR_VOS_Pos)
+#define PWR_CR_VOS_SCALE1 (0x3UL << PWR_CR_VOS_Pos) /* 0b11 */
+
+#define PWR_CR_ODEN   (1UL << 16)
+#define PWR_CR_ODSWEN (1UL << 17)
+
+#define PWR_CSR_ODRDY   (1UL << 16)
+#define PWR_CSR_ODSWRDY (1UL << 17)
+
 
 // global system clock
 uint32_t SystemCoreClock = 16000000UL;
@@ -181,6 +201,31 @@ void SystemClock_Config(void)
     {
     }
 
+    // enable PWR clock
+    volatile uint32_t dummy;
+    uint32_t cr;
+
+    RCC_APB1ENR |= RCC_APB1ENR_PWREN;
+    dummy = RCC_APB1ENR;
+    (void)dummy;
+
+    // select scale 1 voltage regulation
+    cr = PWR_CR;
+    cr &= ~PWR_CR_VOS_Msk;
+    cr |= PWR_CR_VOS_SCALE1;
+    PWR_CR = cr;
+
+    // enable Over-Drive mode
+    PWR_CR |= PWR_CR_ODEN;
+    while (!(PWR_CSR & PWR_CSR_ODRDY))
+    {
+    }
+
+    PWR_CR |= PWR_CR_ODSWEN;
+    while (!(PWR_CSR & PWR_CSR_ODSWRDY))
+    {
+    }
+
     // configure PLL
     RCC_PLLCFGR = (PLL_M << RCC_PLLCFGR_PLLM_Pos) | (PLL_N << RCC_PLLCFGR_PLLN_Pos) |
                   (PLL_P_ENCODED << RCC_PLLCFGR_PLLP_Pos) | RCC_PLLCFGR_PLLSRC_HSE |
@@ -195,10 +240,11 @@ void SystemClock_Config(void)
     RCC_CFGR = cfgr;
 
     // enable PLL and wait for acknowledgement
+    uint32_t timeout = TIMEOUT;
     RCC_CR |= RCC_CR_PLLON;
+
     while (!(RCC_CR & RCC_CR_PLLRDY))
     {
-        uint32_t timeout = TIMEOUT;
         if (--timeout == 0UL)
         {
             PLL_ConfigError();
