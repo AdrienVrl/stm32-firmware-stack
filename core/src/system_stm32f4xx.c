@@ -240,7 +240,7 @@ void SystemClock_Config(void)
     RCC_CFGR = cfgr;
 
     // enable PLL and wait for acknowledgement
-    uint32_t timeout = TIMEOUT;
+    timeout = TIMEOUT;
     RCC_CR |= RCC_CR_PLLON;
 
     while (!(RCC_CR & RCC_CR_PLLRDY))
