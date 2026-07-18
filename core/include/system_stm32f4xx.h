@@ -19,6 +19,10 @@ extern "C"
      */
     void SystemInit(void);
 
+    extern uint32_t SystemCoreClock;
+
+    void SystemClock_Config(void);
+
 #ifdef __cplusplus
 }
 #endif

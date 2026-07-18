@@ -318,6 +318,8 @@ void Reset_Handler(void)
         *dst++ = *src++;
     }
 
+    SystemClock_Config();
+
     /* Zero-fill .bss in SRAM */
     dst = &_sbss;
     while (dst < &_ebss)
