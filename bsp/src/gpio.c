@@ -47,9 +47,9 @@ void GPIO_WritePin(GPIO_Port *port, uint8_t pin, uint8_t value)
 void GPIO_TogglePin(GPIO_Port *port, uint8_t pin)
 {
     if (port->ODR & (1 << pin))
-        port->ODR |= (1 << pin);  // currently high -> set low
+        port->ODR &= ~(1 << pin); // currently high -> set low
     else
-        port->ODR &= ~(1 << pin); // currently low -> set high
+        port->ODR |= (1 << pin);  // currently low -> set high
 }
 
 GPIO_PinState GPIO_ReadPin(GPIO_Port *port, uint8_t pin)
