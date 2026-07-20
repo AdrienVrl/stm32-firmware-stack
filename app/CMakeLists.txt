@@ -18,6 +18,7 @@ arm_add_firmware(
   SOURCES
   ${CMAKE_SOURCE_DIR}/core/src/startup.c
   ${CMAKE_SOURCE_DIR}/core/src/system_stm32f4xx.c
+  ${CMAKE_SOURCE_DIR}/core/src/syscall.c
   ${CMAKE_SOURCE_DIR}/app/src/main.c
   LIBS
   bsp
