@@ -112,4 +112,9 @@ void assert_failed(const char *file, uint32_t line);
 // Example: READ_FIELD(GPIOA->MODER, 2, 10) reads bits [11:10]
 #define READ_FIELD(reg, width, shift) (((reg) >> (shift)) & ((1UL << (width)) - 1))
 
+__attribute__((always_inline)) static inline void __disable_irq(void)
+{
+    __asm volatile("cpsid i" ::: "memory");
+}
+
 #endif // COMMON_H
