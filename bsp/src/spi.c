@@ -17,8 +17,6 @@
 
 #define TIMEOUT (0x5000UL)
 
-uint32_t cr1 = 0;
-
 
 static void RXNE_Error(void)
 {
@@ -34,6 +32,16 @@ static void TXE_Error(void)
     }
 }
 
+static inline void spi_cs_select(void)
+{
+    GPIO_WritePin(GPIOB, 12, 0); // pull CS low — assert
+}
+
+static inline void spi_cs_deselect(void)
+{
+    GPIO_WritePin(GPIOB, 12, 1); // release CS high — deassert
+}
+
 void spi_init(SPI_Config cfg)
 {
     // PB12: software-controlled CS, plain GPIO output — NOT alternate function
@@ -42,8 +50,7 @@ void spi_init(SPI_Config cfg)
                           .speed = GPIO_SPEED_VERY_HIGH,
                           .pupd  = GPIO_PUPD_NONE};
     GPIO_Init(GPIOB, 12, cs_cfg);
-    GPIO_WritePin(GPIOB, 12, 1);         // idle high — CS deasserted by default
-    uint8_t spi2_pins[3] = {13, 14, 15}; // NSS, SCK, MISO, MOSI
+    uint8_t spi2_pins[3] = {13, 14, 15}; // SCK, MISO, MOSI
 
     for (int i = 0; i < 3; i++)
     {
@@ -61,6 +68,8 @@ void spi_init(SPI_Config cfg)
     volatile uint32_t dummy;
     dummy = RCC_APB1ENR;
     (void)dummy;
+
+    uint32_t cr1 = 0;
 
     cr1 |= (cfg.mode & 0x3);     // bits 0-1: CPHA, CPOL
     cr1 |= (cfg.prescaler << 3); // bits 3-5: BR[2:0]
@@ -102,16 +111,20 @@ uint8_t spi_transfer_byte(uint8_t data)
 
 void spi_write(const uint8_t *data, uint16_t len)
 {
+    spi_cs_select();
     for (uint16_t i = 0; i < len; i++)
     {
         spi_transfer_byte(data[i]);
     }
+    spi_cs_deselect();
 }
 
 void spi_read(uint8_t *data, uint16_t len)
 {
+    spi_cs_select();
     for (uint16_t i = 0; i < len; i++)
     {
         data[i] = spi_transfer_byte(SPI_DUMMY_BYTE);
     }
+    spi_cs_deselect();
 }
