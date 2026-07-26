@@ -19,7 +19,7 @@ int main(void)
     for (int i = 0; i < 16; i++)
         tx_buf[i] = i;
     spi_transfer_dma(tx_buf, rx_buf, 16);
-    while (spi_dma_busy())
+    while (spi_dma_wait())
     {
         background_counter++;
     }
@@ -35,7 +35,7 @@ int main(void)
             printf("Mismatch at %d: sent 0x%02X, got 0x%02X\r\n", i, tx_buf[i], rx_buf[i]);
         }
     }
-    printf(match ? "Loopback OK, 32 bytes matched\r\n" : "Loopback FAILED\r\n");
+    printf(match ? "Loopback OK, 16 bytes matched\r\n" : "Loopback FAILED\r\n");
 
     printf("match: %d\r\n", match);
 }

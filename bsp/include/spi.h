@@ -79,6 +79,6 @@ void spi_write_dma(const uint8_t *data, uint16_t len);
 
 void spi_read_dma(uint8_t *data, uint16_t len);
 
-bool spi_dma_busy(void);
+bool spi_dma_wait(void);
 
 #endif

@@ -219,15 +219,14 @@ void spi_write_dma(const uint8_t *data, uint16_t len)
     DMA1_Stream4->M0AR = (uint32_t)data;
     DMA1_Stream4->NDTR = len;
     DMA1_Stream4->FCR &= ~DMA_SxFCR_DMDIS; // ensure direct mode (bypass FIFO)
-    DMA1_Stream3->CR = (0 << 25) | DMA_SxCR_DIR_P2M;
 
-    DMA1_Stream4->CR = (0 << 25)          // channel 0
-                       | DMA_SxCR_DIR_M2P // memory-to-peripheral
-                       | DMA_SxCR_MINC    // memory address increments
-                       | DMA_SxCR_TCIE;   // transfer-complete interrupt
+    DMA1_Stream4->CR = (0 << 25)           // channel 0
+                       | DMA_SxCR_DIR_M2P  // memory-to-peripheral
+                       | DMA_SxCR_MINC     // memory address increments
+                       | DMA_SxCR_TCIE;    // transfer-complete interrupt
 
-    SPI2->CR2 |= (1 << 1);                // TXDMAEN
-    SPI2->CR2 |= (1 << 0);                // RXDMAEN
+    SPI2->CR2 |= (1 << 1);                 // TXDMAEN
+    SPI2->CR2 |= (1 << 0);                 // RXDMAEN
 
     spi_tx_dma_done = false;
     DMA1_Stream3->CR |= DMA_SxCR_EN;
@@ -284,6 +283,20 @@ void DMA1_Stream3_IRQHandler(void)
     }
 }
 
+void SR_Error()
+{
+    while (1)
+    {
+    }
+}
+
+void DMA_Error()
+{
+    while (1)
+    {
+    }
+}
+
 bool spi_dma_busy(void)
 {
     uint32_t timeout = TIMEOUT;
@@ -293,11 +306,18 @@ bool spi_dma_busy(void)
         if (--timeout == 0UL)
         {
             spi_cs_deselect();
-            return true;
+            DMA_Error();
         }
     }
+
+    timeout = TIMEOUT;
+
     while (SPI2->SR & (1 << 7))
     {
+        if (--timeout == 0UL)
+        {
+            SR_Error();
+        }
     }
     spi_cs_deselect();
     return false;
