@@ -5,7 +5,6 @@
 #include "uart.h"
 
 #include <stdint.h>
-#include <stdio.h>
 
 #define RCC_BASE 0x40023800
 #define RCC_APB1ENR                                                                                \
@@ -56,7 +55,7 @@ void i2c_init(uint32_t speed_hz)
         ccr_value   = pclk1_hz / (2UL * speed_hz);
         trise_value = pclk1_mhz + 1;
 
-        I2C1->CCR = (I2C1->CCR & ~0xFFF) | (ccr_value & 0xFFF);
+        I2C1->CCR = ccr_value & 0xFFF;
         // F/S bit (bit 15) and DUTY bit (bit 14) stay 0 — standard mode
     }
     else
@@ -80,7 +79,7 @@ static void SR1_Error(void)
     }
 }
 
-void i2c_write(uint8_t addr, const uint8_t *data, uint16_t len)
+static void i2c_write_no_stop(uint8_t addr, const uint8_t *data, uint16_t len)
 {
     I2C1->CR1 |= (1 << 8); // Start
 
@@ -134,64 +133,13 @@ void i2c_write(uint8_t addr, const uint8_t *data, uint16_t len)
             SR1_Error();
         }
     }
-
-    I2C1->CR1 |= (1 << 9);
 }
 
-void i2c_write_no_stop(uint8_t addr, const uint8_t *data, uint16_t len)
+void i2c_write(uint8_t addr, const uint8_t *data, uint16_t len)
 {
-    I2C1->CR1 |= (1 << 8); // Start
+    i2c_write_no_stop(addr, data, len);
 
-    uint32_t timeout = TIMEOUT;
-
-    while (!(I2C1->SR1 & (1 << 0))) // SB
-    {
-        if (--timeout == 0)
-        {
-            SR1_Error();
-        }
-    }
-
-    I2C1->DR = (addr << 1) | 0;
-    timeout  = TIMEOUT;
-
-    while (!(I2C1->SR1 & (1 << 1))) // ADDR
-    {
-        if (--timeout == 0)
-        {
-            SR1_Error();
-        }
-    }
-
-    // clear ADDR
-    (void)I2C1->SR1;
-    (void)I2C1->SR2;
-
-    timeout = TIMEOUT;
-
-    for (uint16_t i = 0; i < len; i++)
-    {
-        while (!(I2C1->SR1 & (1 << 7))) // TxE
-        {
-            if (--timeout == 0)
-            {
-                I2C1->CR1 |= (1 << 9); // Stop to release bus
-                SR1_Error();
-            }
-        }
-
-        I2C1->DR = data[i];
-    }
-
-    timeout = TIMEOUT;
-    while (!(I2C1->SR1 & (1 << 2))) // BTF
-    {
-        if (--timeout == 0)
-        {
-            I2C1->CR1 |= (1 << 9); // Stop to release bus
-            SR1_Error();
-        }
-    }
+    I2C1->CR1 |= (1 << 9);
 }
 
 void i2c_read(uint8_t addr, uint8_t *data, uint16_t len)

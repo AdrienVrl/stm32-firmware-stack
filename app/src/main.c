@@ -4,11 +4,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-volatile uint32_t background_counter = 0;
-
-#define USART2_BASE 0x40004400UL
-#define USART2      ((USART_Port *)USART2_BASE)
-
 int main(void)
 {
     uart_init(115200);
