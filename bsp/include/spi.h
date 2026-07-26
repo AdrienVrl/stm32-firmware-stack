@@ -1,6 +1,7 @@
 #ifndef SPI_H
 #define SPI_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef enum
@@ -49,5 +50,35 @@ uint8_t spi_transfer_byte(uint8_t data);
 void spi_write(const uint8_t *data, uint16_t len);
 
 void spi_read(uint8_t *data, uint16_t len);
+
+typedef struct
+{
+    volatile uint32_t CR;   // 0x00 config
+    volatile uint32_t NDTR; // 0x04 number of data to transfer
+    volatile uint32_t PAR;  // 0x08 peripheral address
+    volatile uint32_t M0AR; // 0x0C memory address 0
+    volatile uint32_t M1AR; // 0x10 memory address 1 (double-buffer mode)
+    volatile uint32_t FCR;  // 0x14 FIFO control
+} DMA_Stream_TypeDef;
+
+typedef struct
+{
+    volatile uint32_t LISR;       // 0x00 low interrupt status
+    volatile uint32_t HISR;       // 0x04 high interrupt status
+    volatile uint32_t LIFCR;      // 0x08 low interrupt flag clear
+    volatile uint32_t HIFCR;      // 0x0C high interrupt flag clear
+    DMA_Stream_TypeDef STREAM[8]; // streams 0-7, offset 0x10 + n*0x18
+} DMA_TypeDef;
+
+
+void spi_dma_init(void);
+
+void spi_transfer_dma(const uint8_t *tx_buf, uint8_t *rx_buf, uint16_t len);
+
+void spi_write_dma(const uint8_t *data, uint16_t len);
+
+void spi_read_dma(uint8_t *data, uint16_t len);
+
+void spi_dma_wait(void);
 
 #endif
