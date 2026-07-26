@@ -18,13 +18,11 @@ int main(void)
     uint8_t rx_buf[16];
     for (int i = 0; i < 16; i++)
         tx_buf[i] = i;
-    spi_cs_select();
     spi_transfer_dma(tx_buf, rx_buf, 16);
     while (spi_dma_busy())
     {
         background_counter++;
     }
-    spi_cs_deselect();
 
     printf("Background counter during TX: %lu\r\n", background_counter);
 
