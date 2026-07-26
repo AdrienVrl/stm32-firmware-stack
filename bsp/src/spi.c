@@ -283,14 +283,14 @@ void DMA1_Stream3_IRQHandler(void)
     }
 }
 
-void SR_Error()
+static void SR_Error(void)
 {
     while (1)
     {
     }
 }
 
-void DMA_Error()
+static void DMA_Error(void)
 {
     while (1)
     {
