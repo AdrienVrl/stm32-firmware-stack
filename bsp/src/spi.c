@@ -297,7 +297,7 @@ void DMA_Error()
     }
 }
 
-bool spi_dma_busy(void)
+void spi_dma_wait(void)
 {
     uint32_t timeout = TIMEOUT;
 
@@ -320,5 +320,4 @@ bool spi_dma_busy(void)
         }
     }
     spi_cs_deselect();
-    return false;
 }

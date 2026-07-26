@@ -19,12 +19,7 @@ int main(void)
     for (int i = 0; i < 16; i++)
         tx_buf[i] = i;
     spi_transfer_dma(tx_buf, rx_buf, 16);
-    while (spi_dma_wait())
-    {
-        background_counter++;
-    }
-
-    printf("Background counter during TX: %lu\r\n", background_counter);
+    spi_dma_wait();
 
     bool match = true;
     for (int i = 0; i < 16; i++)
