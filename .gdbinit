@@ -10,7 +10,7 @@ target extended-remote :3333
 # ── 2. Load symbols from the ELF ─────────────────────────────────────────────
 # This loads debug symbols without re-flashing the binary.
 # Change the path to whichever target you're debugging.
-file build/arm/firmware.elf
+file build/arm/app/firmware
 
 # ── 3. Reset and halt the CPU before doing anything ──────────────────────────
 # 'monitor' sends a command directly to OpenOCD rather than GDB.
@@ -36,7 +36,7 @@ set print array on
 set print array-indexes on
 
 # Show the full string content of char* rather than just the address.
-set print null-terminated-string on
+set print null-stop on
 
 # ── 7. History ────────────────────────────────────────────────────────────────
 # Save command history across sessions so you can arrow-up previous commands.

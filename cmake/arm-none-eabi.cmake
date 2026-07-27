@@ -83,7 +83,8 @@ set(CMAKE_EXE_LINKER_FLAGS
     -Wl,-Map=${PROJECT_NAME}.map \
     --specs=nano.specs \
     --specs=nosys.specs \
-    -lc -lm"
+    -lc -lm \
+    -Wl,-u,_printf_float"
     CACHE STRING "" FORCE)
 
 # ── 7. Prevent CMake from testing the compiler ────────────────────────────────
