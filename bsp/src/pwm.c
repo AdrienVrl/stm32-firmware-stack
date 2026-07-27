@@ -20,31 +20,28 @@
 void pwm_init(uint32_t freq_hz)
 {
     RCC_APB1ENR |= (1 << 0);
+    volatile uint32_t dummy;
+    dummy = RCC_APB1ENR;
+    (void)dummy;
+
     uint32_t pclk1     = APB1_GetClock();
     uint32_t ppre1     = (RCC_CFGR >> 10) & 0x7;
-    uint32_t timer_clk = (ppre1 == 0) ? pclk1 : (pclk1 * 2);
+    uint32_t timer_clk = ((ppre1 & 0x4) == 0) ? pclk1 : (pclk1 * 2);
 
     uint32_t total_ticks = timer_clk / freq_hz; // = (PSC+1) * (ARR+1)
 
     uint32_t psc = 0;
     uint32_t arr = total_ticks - 1;
 
-    // If total_ticks doesn't fit in ARR's 16-bit range, increase PSC until it does
-    while (arr > 0xFFFF)
-    {
-        psc++;
-        arr = (total_ticks / (psc + 1)) - 1;
-    }
-
     TIM2->PSC = psc;
     TIM2->ARR = arr;
 
-    TIM2->CCMR1 = (TIM2->CCMR1 & ~(0x7 << 4)) | (0x6 << 4);
-    TIM2->CCMR1 |= (1 << 3);
-    TIM2->CCER |= (1 << 0);
-    TIM2->CR1 |= (1 << 7);
-    TIM2->EGR |= (1 << 0);
-    TIM2->CR1 |= (1 << 0);
+    TIM2->CCMR1 = (TIM2->CCMR1 & ~(0x7 << 4)) | (0x6 << 4); // OC1M = 110
+    TIM2->CCMR1 |= (1 << 3);                                // OC1PE
+    TIM2->CCER |= (1 << 0);                                 // CC1E
+    TIM2->CR1 |= (1 << 7);                                  // ARPE
+    TIM2->EGR |= (1 << 0);                                  // UG
+    TIM2->CR1 |= (1 << 0);                                  // CEN
     GPIO_Config cfg = {
         .mode = GPIO_MODE_ALTERNATE,
         .otype =
