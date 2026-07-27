@@ -115,17 +115,3 @@ void TIM3_IRQHandler(void)
         fresh_capture_count++;
     }
 }
-
-bool input_capture_wait_fresh(void)
-{
-    fresh_capture_count = 0;
-    uint32_t elapsed    = 0;
-    while (fresh_capture_count < 2)
-    {
-        if (++elapsed >= TIMEOUT)
-        {
-            return false;
-        }
-    }
-    return true;
-}

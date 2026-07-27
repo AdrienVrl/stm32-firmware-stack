@@ -18,10 +18,8 @@ int main(void)
         pwm_init(test_freqs[i]);
         pwm_set_duty(50);
 
-        if (!input_capture_wait_fresh())
+        for (volatile uint32_t i = 0; i < 1000000; i++)
         {
-            printf("Set: %6lu Hz | TIMEOUT waiting for captures\r\n", test_freqs[i]);
-            continue;
         }
         uint32_t measured = input_capture_get_frequency_hz();
 

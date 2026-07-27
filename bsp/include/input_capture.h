@@ -5,5 +5,4 @@
 
 void input_capture_init(void);
 uint32_t input_capture_get_frequency_hz(void);
-bool input_capture_wait_fresh(void);
 #endif
