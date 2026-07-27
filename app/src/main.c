@@ -16,21 +16,21 @@ int main(void)
     {
         pwm_set_duty(d);
     }
-while (1)
-  {
-      for (uint8_t d = 0; d <= 100; d++)
-      {
-          pwm_set_duty(d);
-          for (volatile uint32_t i = 0; i < 100000; i++)
-          {
-          }
+        while
+
+          for (uint8_t d = 0; d <= 100; d+
+
+              pwm_set_duty(d
+              for (volatile uint32_t i = 0; i < 100000; i+
+
+
+
+          for (uint8_t d = 100; d > 0; d-
+
+              pwm_set_duty(d - 1
+              for (volatile uint32_t i = 0; i < 100000; i+
+
+
+
       }
-      for (uint8_t d = 100; d > 0; d--)
-      {
-          pwm_set_duty(d - 1);
-          for (volatile uint32_t i = 0; i < 100000; i++)
-          {
-          }
-      }
-  }
 }
