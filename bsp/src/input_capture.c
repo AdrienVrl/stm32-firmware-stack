@@ -22,8 +22,6 @@
 #define GPIOA_BASE 0x40020000UL
 #define GPIOA      ((GPIO_Port *)GPIOA_BASE)
 
-#define TIMEOUT (0x500000UL)
-
 void input_capture_init(void)
 {
     RCC_APB1ENR |= (1 << 1);
@@ -37,7 +35,7 @@ void input_capture_init(void)
             GPIO_OTYPE_PUSH_PULL, // driving an LED, push-pull is correct (not open-drain like I2C)
         .speed     = GPIO_SPEED_HIGH,
         .pupd      = GPIO_PUPD_NONE, // actively driven, no pull needed
-        .alternate = 2               // AF1 = TIM2 on STM32F4
+        .alternate = 2               // AF2 = TIM3 on STM32F4
     };
     GPIO_Init(GPIOA, 6, cfg);
 
@@ -58,11 +56,10 @@ void input_capture_init(void)
     NVIC_ISER0 |= (1 << 29); // Unable IRQ
 }
 
-static volatile uint16_t prev_capture        = 0;
-static volatile uint32_t overflow_count      = 0;
-static volatile uint32_t last_period_ticks   = 0;
-static volatile bool capture_ready           = false;
-static volatile uint32_t fresh_capture_count = 0;
+static volatile uint16_t prev_capture      = 0;
+static volatile uint32_t overflow_count    = 0;
+static volatile uint32_t last_period_ticks = 0;
+static volatile bool capture_ready         = false;
 
 uint32_t input_capture_get_frequency_hz(void)
 {
@@ -74,7 +71,7 @@ uint32_t input_capture_get_frequency_hz(void)
 
     uint32_t pclk1     = APB1_GetClock();
     uint32_t ppre1     = (RCC_CFGR >> 10) & 0x7;
-    uint32_t timer_clk = (ppre1 == 0) ? pclk1 : (pclk1 * 2);
+    uint32_t timer_clk = ((ppre1 & 0x4) == 0) ? pclk1 : (pclk1 * 2);
     uint32_t freq_hz   = timer_clk / last_period_ticks;
 
     return freq_hz;
@@ -112,6 +109,5 @@ void TIM3_IRQHandler(void)
         prev_capture   = current_capture;
         overflow_count = 0; // reset — we've now accounted for it in this period
         capture_ready  = true;
-        fresh_capture_count++;
     }
 }
