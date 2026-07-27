@@ -13,7 +13,7 @@ int main(void)
         for (uint8_t d = 0; d <= 100; d++)
         {
             pwm_set_duty(d);
-            for (volatile uint32_t i = 0; i < d; i++)
+            for (volatile uint32_t i = 0; i < 100000; i++)
             {
             }
         }
@@ -21,7 +21,7 @@ int main(void)
         {
             pwm_set_duty(d - 1);
 
-            for (volatile uint32_t i = 0; i < d; i++)
+            for (volatile uint32_t i = 0; i < 100000; i++)
             {
             }
         }
