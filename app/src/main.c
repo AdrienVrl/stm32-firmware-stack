@@ -1,4 +1,4 @@
-#include "i2c.h"
+#include "pwm.h"
 #include "uart.h"
 
 #include <stdint.h>
@@ -7,9 +7,23 @@
 int main(void)
 {
     uart_init(115200);
-    i2c_init(100000);
+    pwm_init(1000);
+    while (1)
+    {
+        for (uint8_t d = 0; d <= 100; d++)
+        {
+            pwm_set_duty(d);
+            for (volatile uint32_t i = 0; i < 100000; i++)
+            {
+            }
+        }
+        for (uint8_t d = 100; d > 0; d--)
+        {
+            pwm_set_duty(d - 1);
 
-    uint8_t who_am_i;
-    who_am_i = i2c_read_reg(0x68, 0x75);
-    printf("WHO_AM_I = 0x%02X\r\n", who_am_i);
+            for (volatile uint32_t i = 0; i < 100000; i++)
+            {
+            }
+        }
+    }
 }
