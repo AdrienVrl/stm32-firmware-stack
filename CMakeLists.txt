@@ -28,15 +28,25 @@ set(CMAKE_C_EXTENSIONS OFF)
 include(cmake/utils.cmake)
 add_docs_target()
 
-# Third-party dependencies
-add_subdirectory_if_exists(third_party/FreeRTOS)
-add_subdirectory_if_exists(third_party/CMSIS-DSP)
-
 # Internal modules
 add_subdirectory(core)
 add_subdirectory(bsp)
 
 if(TARGET_PLATFORM STREQUAL "arm")
+  add_library(freertos_config INTERFACE)
+  target_include_directories(
+    freertos_config INTERFACE ${CMAKE_SOURCE_DIR}/bsp/include
+                              ${CMAKE_SOURCE_DIR}/core/include)
+  set(FREERTOS_PORT
+      "GCC_ARM_CM4F"
+      CACHE STRING "" FORCE)
+  set(FREERTOS_HEAP
+      "4"
+      CACHE STRING "" FORCE)
+  # Third-party dependencies
+  add_subdirectory_if_exists(third_party/FreeRTOS-Kernel)
+  add_subdirectory_if_exists(third_party/CMSIS-DSP)
+
   add_subdirectory_if_exists(bootloader)
   add_subdirectory_if_exists(app)
   add_subdirectory_if_exists(ml)
