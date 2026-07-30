@@ -31,9 +31,7 @@ void vTask2(void *pvParameters)
         printf("Task 2 (Low Priority) running\r\n");
         UNUSED(pvParameters);
 
-        for (volatile uint32_t i = 0; i < 100000; i++)
-        {
-        }
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
@@ -69,7 +67,6 @@ int main(void)
 
     if (xReturned != pdPASS)
     {
-        /* Handle creation failure, e.g. insufficient heap */
         for (;;)
             ;
     }
