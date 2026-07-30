@@ -9,6 +9,10 @@
 #include <stdint.h>
 #include <system_stm32f4xx.h>
 
+extern void vPortSVCHandler(void);
+extern void xPortPendSVHandler(void);
+extern void xPortSysTickHandler(void);
+
 /*-----------------------------------------------------------------------*/
 /* Symbols provided by the linker script (see linker.ld)                 */
 /*-----------------------------------------------------------------------*/
@@ -72,10 +76,7 @@ void NMI_Handler(void) WEAK_ALIAS;
 void MemManage_Handler(void) WEAK_ALIAS;
 void BusFault_Handler(void) WEAK_ALIAS;
 void UsageFault_Handler(void) WEAK_ALIAS;
-void SVC_Handler(void) WEAK_ALIAS;
 void DebugMon_Handler(void) WEAK_ALIAS;
-void PendSV_Handler(void) WEAK_ALIAS;
-void SysTick_Handler(void) WEAK_ALIAS;
 
 /* --- STM32F446xx device interrupts (IRQ0 .. IRQ96) --- */
 void WWDG_IRQHandler(void) WEAK_ALIAS;
@@ -194,11 +195,11 @@ __attribute__((section(".isr_vector"), used)) const VectorEntry g_pfnVectors[] =
     {.stackptr = 0},                  /* 8  Reserved              */
     {.stackptr = 0},                  /* 9  Reserved              */
     {.stackptr = 0},                  /* 10 Reserved              */
-    {.handler = SVC_Handler},         /* 11 SVCall                */
+    {.handler = vPortSVCHandler},     /* 11 SVCall  */
     {.handler = DebugMon_Handler},    /* 12 Debug Monitor         */
     {.stackptr = 0},                  /* 13 Reserved              */
-    {.handler = PendSV_Handler},      /* 14 PendSV                */
-    {.handler = SysTick_Handler},     /* 15 SysTick               */
+    {.handler = xPortPendSVHandler},  /* 14 PendSV  */
+    {.handler = xPortSysTickHandler}, /* 15 SysTick */
 
     /* ---- External interrupts (IRQ0..IRQ96), positions 16..112 ---- */
     {.handler = WWDG_IRQHandler},               /* 16  IRQ0  WWDG */
