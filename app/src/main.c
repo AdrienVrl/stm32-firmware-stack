@@ -162,10 +162,9 @@ void vHeartBeatTask(void *pvParameters)
 
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
-    taskENTER_CRITICAL();
     UNUSED(xTask);
     printf("stack overflow, task: %s", pcTaskName);
-
+    portDISABLE_INTERRUPTS();
     while (1)
     {
     }
