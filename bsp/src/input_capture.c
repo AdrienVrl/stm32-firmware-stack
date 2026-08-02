@@ -2,7 +2,6 @@
 
 #include "gpio.h"
 #include "uart.h"
-
 #include <pwm.h>
 #include <stdbool.h>
 #include <stdint.h>
