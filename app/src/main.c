@@ -314,7 +314,7 @@ int main(void)
     }
 
     xReturned = xTaskCreate(vWatchdogTask, "Watchdog", configMINIMAL_STACK_SIZE * 4, NULL,
-                            tskIDLE_PRIORITY + 4, &xTaskHandle6);
+                            tskIDLE_PRIORITY + 5, &xTaskHandle6);
 
     if (xReturned != pdPASS)
     {
