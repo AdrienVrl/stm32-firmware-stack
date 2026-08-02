@@ -1,28 +1,48 @@
-#include "common.h"
 #include "FreeRTOS.h"
+
+#include "event_groups.h"
 #include "FreeRTOSConfig.h"
+#include "queue.h"
+#include "semphr.h"
+#include "task.h"
+
+#include "common.h"
+#include "exti.h"
 #include "gpio.h"
 #include "i2c.h"
 #include "input_capture.h"
 #include "pwm.h"
-#include "queue.h"
-#include "task.h"
 #include "uart.h"
-#define GPIOA_BASE 0x40020000UL
-#define GPIOA      ((GPIO_Port *)GPIOA_BASE)
 
 #include <stdint.h>
 #include <stdio.h>
+#define GPIOA_BASE 0x40020000UL
+#define GPIOA      ((GPIO_Port *)GPIOA_BASE)
+#define GPIOC_BASE 0x40020800UL
+#define GPIOC      ((GPIO_Port *)GPIOC_BASE)
+
 TaskHandle_t xTaskHandle1 = NULL;
 TaskHandle_t xTaskHandle2 = NULL;
 TaskHandle_t xTaskHandle3 = NULL;
 TaskHandle_t xTaskHandle4 = NULL;
+TaskHandle_t xTaskHandle5 = NULL;
+TaskHandle_t xTaskHandle6 = NULL;
 
 QueueHandle_t xSensorQueue, xProcessorQueue;
 uint32_t sensor_drop_count_snd;
 uint32_t sensor_drop_count_rcv;
 uint32_t processed_drop_count_snd;
 uint32_t processed_drop_count_rcv;
+
+#define WDG_BIT_SENSOR_READER (1 << 0)
+#define WDG_BIT_PROCESSOR     (1 << 1)
+#define WDG_BIT_OUTPUT        (1 << 2)
+#define WDG_BIT_HEARTBEAT     (1 << 3)
+
+#define WDG_ALL_TASKS_BITS                                                                         \
+    (WDG_BIT_SENSOR_READER | WDG_BIT_PROCESSOR | WDG_BIT_OUTPUT | WDG_BIT_HEARTBEAT)
+
+EventGroupHandle_t xWatchdogEvents;
 
 typedef struct
 {
@@ -78,7 +98,7 @@ void vSensorReaderTask(void *pvParameters)
                 sensor_drop_count_snd++;
             }
         }
-
+        xEventGroupSetBits(xWatchdogEvents, WDG_BIT_SENSOR_READER);
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
@@ -116,6 +136,8 @@ void vSensorProcessorTask(void *pvParameters)
                 processed_drop_count_snd++;
             }
         }
+
+        xEventGroupSetBits(xWatchdogEvents, WDG_BIT_PROCESSOR);
     }
 }
 
@@ -137,9 +159,12 @@ void vSensorOutputTask(void *pvParameters)
             }
         }
 
-        printf("Accel_x: %f, Accel_y: %f, Accel_z: %f, Gyro_x: %f, Gyro_y: %f, Gyro_z: %f\r\n",
+        printf("Accel_x: %f, Accel_y: %f, Accel_z: %f, Gyro_x: %f, Gyro_y: %f, "
+               "Gyro_z: %f\r\n",
                xData.accel_g[0], xData.accel_g[1], xData.accel_g[2], xData.gyro_dps[0],
                xData.gyro_dps[1], xData.gyro_dps[2]);
+
+        xEventGroupSetBits(xWatchdogEvents, WDG_BIT_OUTPUT);
     }
 }
 
@@ -156,7 +181,49 @@ void vHeartBeatTask(void *pvParameters)
                (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle3),
                (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle4));
         GPIO_TogglePin(GPIOA, 5);
+
+        xEventGroupSetBits(xWatchdogEvents, WDG_BIT_HEARTBEAT);
         vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
+SemaphoreHandle_t xButtonSemaphore;
+
+void vButtonTask(void *pvParameters)
+{
+    UNUSED(pvParameters);
+    configASSERT(xButtonSemaphore != NULL);
+
+    for (;;)
+    {
+        if (xSemaphoreTake(xButtonSemaphore, portMAX_DELAY) == pdTRUE)
+        {
+            printf("Button pressed\r\n");
+        }
+    }
+}
+
+void vWatchdogTask(void *pvParameters)
+{
+
+    UNUSED(pvParameters);
+    for (;;)
+    {
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        EventBits_t bits_before_reset = xEventGroupClearBits(xWatchdogEvents, WDG_ALL_TASKS_BITS);
+        EventBits_t missing           = (~bits_before_reset) & WDG_ALL_TASKS_BITS;
+
+        if (missing != 0)
+        {
+            if (missing & WDG_BIT_SENSOR_READER)
+                printf("WDG FAULT: sensor reader missed check-in\r\n");
+            if (missing & WDG_BIT_PROCESSOR)
+                printf("WDG FAULT: processor missed check-in\r\n");
+            if (missing & WDG_BIT_OUTPUT)
+                printf("WDG FAULT: output missed check-in\r\n");
+            if (missing & WDG_BIT_HEARTBEAT)
+                printf("WDG FAULT: heartbeat missed check-in\r\n");
+        }
     }
 }
 
@@ -185,10 +252,16 @@ int main(void)
     };
     GPIO_Init(GPIOA, 5, ld2_cfg);
 
+    xButtonSemaphore = xSemaphoreCreateBinary();
+    ButtonEXTI_Init();
+
     BaseType_t xReturned;
 
     xSensorQueue    = xQueueCreate(10, sizeof(SensorData));
     xProcessorQueue = xQueueCreate(10, sizeof(ProcessedData));
+
+    xWatchdogEvents = xEventGroupCreate();
+    configASSERT(xWatchdogEvents != NULL);
 
     sensor_drop_count_snd    = 0;
     sensor_drop_count_rcv    = 0;
@@ -224,6 +297,24 @@ int main(void)
 
     xReturned = xTaskCreate(vHeartBeatTask, "HeartBeat", configMINIMAL_STACK_SIZE + 64, NULL,
                             tskIDLE_PRIORITY + 2, &xTaskHandle4);
+
+    if (xReturned != pdPASS)
+    {
+        for (;;)
+            ;
+    }
+
+    xReturned = xTaskCreate(vButtonTask, "Button", configMINIMAL_STACK_SIZE * 4, NULL,
+                            tskIDLE_PRIORITY + 1, &xTaskHandle5);
+
+    if (xReturned != pdPASS)
+    {
+        for (;;)
+            ;
+    }
+
+    xReturned = xTaskCreate(vWatchdogTask, "Watchdog", configMINIMAL_STACK_SIZE * 4, NULL,
+                            tskIDLE_PRIORITY + 5, &xTaskHandle6);
 
     if (xReturned != pdPASS)
     {

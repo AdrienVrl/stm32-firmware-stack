@@ -68,4 +68,6 @@ GPIO_PinState GPIO_ReadPin(GPIO_Port *port, uint8_t pin);
 
 void GPIO_TogglePin(GPIO_Port *port, uint8_t pin);
 
+void GPIO_TogglePinBSSR(GPIO_Port *port, uint8_t pin);
+
 #endif
