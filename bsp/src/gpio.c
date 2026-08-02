@@ -52,6 +52,14 @@ void GPIO_TogglePin(GPIO_Port *port, uint8_t pin)
         port->ODR |= (1 << pin);  // currently low -> set high
 }
 
+void GPIO_TogglePinBSSR(GPIO_Port *port, uint8_t pin)
+{
+    if (port->ODR & pin)
+        port->BSRR = (uint32_t)pin << 16;
+    else
+        port->BSRR = pin;
+}
+
 GPIO_PinState GPIO_ReadPin(GPIO_Port *port, uint8_t pin)
 {
     if (port->IDR & (1 << pin))

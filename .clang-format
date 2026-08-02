@@ -37,12 +37,22 @@ PointerAlignment: Right
 SortIncludes: CaseInsensitive
 IncludeBlocks: Regroup
 IncludeCategories:
-  # Project headers first
-  - Regex: '^"'
-    Priority: 1
+
+    # FreeRTOS.h must be first — it defines INC_FREERTOS_H, which every
+    # other FreeRTOS header requires before it can be included.
+    - Regex: '^"FreeRTOS\.h"$'
+      Priority: 1
+    # Other FreeRTOS module headers (order between these doesn't matter)
+    - Regex: '^"(FreeRTOSConfig|task|queue|semphr|timers|event_groups|croutine|stream_buffer)\.h"$'
+      Priority: 2
+    # Everything else project-local
+    - Regex: '^"'
+      Priority: 3
+    # System headers
+    - Regex: '^<'
+      Priority:
+        3
   # System headers second
-  - Regex: '^<'
-    Priority: 2
 
 # Spacing
 SpaceAfterCStyleCast: false
