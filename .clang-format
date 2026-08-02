@@ -51,8 +51,7 @@ IncludeCategories:
     # System headers
     - Regex: '^<'
       Priority:
-        3
-  # System headers second
+        4
 
 # Spacing
 SpaceAfterCStyleCast: false

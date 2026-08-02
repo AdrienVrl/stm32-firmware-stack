@@ -162,9 +162,9 @@ void vSensorOutputTask(void *pvParameters)
                "Gyro_z: %f\r\n",
                xData.accel_g[0], xData.accel_g[1], xData.accel_g[2], xData.gyro_dps[0],
                xData.gyro_dps[1], xData.gyro_dps[2]);
-    }
 
-    xEventGroupSetBits(xWatchdogEvents, WDG_BIT_OUTPUT);
+        xEventGroupSetBits(xWatchdogEvents, WDG_BIT_OUTPUT);
+    }
 }
 
 void vHeartBeatTask(void *pvParameters)
@@ -313,7 +313,7 @@ int main(void)
     }
 
     xReturned = xTaskCreate(vWatchdogTask, "Watchdog", configMINIMAL_STACK_SIZE * 4, NULL,
-                            tskIDLE_PRIORITY + 1, &xTaskHandle6);
+                            tskIDLE_PRIORITY + 4, &xTaskHandle6);
 
     if (xReturned != pdPASS)
     {
