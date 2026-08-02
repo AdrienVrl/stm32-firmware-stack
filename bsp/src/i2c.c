@@ -3,6 +3,7 @@
 #include "gpio.h"
 #include "system_stm32f4xx.h"
 #include "uart.h"
+
 #include <stdint.h>
 
 #define RCC_BASE 0x40023800

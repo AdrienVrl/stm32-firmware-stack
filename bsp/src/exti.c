@@ -6,6 +6,7 @@
 #include "semphr.h"
 
 #include "gpio.h"
+
 #include <stdint.h>
 
 #define RCC_BASE 0x40023800
