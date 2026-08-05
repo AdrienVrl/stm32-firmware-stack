@@ -27,6 +27,7 @@ TaskHandle_t xTaskHandle3 = NULL;
 TaskHandle_t xTaskHandle4 = NULL;
 TaskHandle_t xTaskHandle5 = NULL;
 TaskHandle_t xTaskHandle6 = NULL;
+TaskHandle_t xTaskHandle7 = NULL;
 
 QueueHandle_t xSensorQueue, xProcessorQueue;
 uint32_t sensor_drop_count_snd;
@@ -175,15 +176,31 @@ void vHeartBeatTask(void *pvParameters)
 
     for (;;)
     {
-        printf("HWM Reader=%lu Processor=%lu Output=%lu HeartBeat=%lu\r\n",
-               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle1),
-               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle2),
-               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle3),
-               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle4));
         GPIO_TogglePin(GPIOA, 5);
 
         xEventGroupSetBits(xWatchdogEvents, WDG_BIT_HEARTBEAT);
         vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
+void vStatsTask(void *pvParameters)
+{
+    UNUSED(pvParameters);
+
+    for (;;)
+    {
+        printf("HWM Reader=%lu Processor=%lu Output=%lu HeartBeat=%lu Button=%lu Watchdog=%lu\r\n",
+               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle1),
+               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle2),
+               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle3),
+               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle4),
+               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle5),
+               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle6));
+
+        printf("HeapSize=%lu FreeHeapSize=%lu\r\n", (unsigned long)xPortGetFreeHeapSize(),
+               (unsigned long)xPortGetMinimumEverFreeHeapSize());
+
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
 
@@ -315,6 +332,15 @@ int main(void)
 
     xReturned = xTaskCreate(vWatchdogTask, "Watchdog", configMINIMAL_STACK_SIZE * 4, NULL,
                             tskIDLE_PRIORITY + 5, &xTaskHandle6);
+
+    if (xReturned != pdPASS)
+    {
+        for (;;)
+            ;
+    }
+
+    xReturned = xTaskCreate(vStatsTask, "Stats", configMINIMAL_STACK_SIZE * 4, NULL,
+                            tskIDLE_PRIORITY + 1, &xTaskHandle7);
 
     if (xReturned != pdPASS)
     {
