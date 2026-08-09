@@ -22,9 +22,9 @@
 #define RCC_APB1ENR mock_rcc_apb1enr
 #define RCC_CFGR    mock_rcc_cfgr
 #define NVIC_ISER1  mock_nvic_iser1
-#define GPIOA_BASE  ((uintptr_t)&mock_gpioa)
+#define GPIOA_BASE  ((uintptr_t) & mock_gpioa)
 #define GPIOA       ((GPIO_Port *)GPIOA_BASE)
-#define USART2_BASE ((uintptr_t)&mock_usart2)
+#define USART2_BASE ((uintptr_t) & mock_usart2)
 #define USART2      ((USART_Port *)USART2_BASE)
 #endif
 

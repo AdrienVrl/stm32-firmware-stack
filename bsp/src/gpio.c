@@ -8,7 +8,7 @@
 #else
 #include "mock_registers.h"
 #define RCC_AHB1ENR mock_rcc_ahb1enr
-#define GPIOA_BASE  ((uintptr_t)&mock_gpioa)
+#define GPIOA_BASE  ((uintptr_t) & mock_gpioa)
 #endif
 
 void GPIO_Init(GPIO_Port *port, uint8_t pin, GPIO_Config config)
