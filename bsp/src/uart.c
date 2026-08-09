@@ -1,9 +1,11 @@
+#include "uart.h"
+
 #include "gpio.h"
 #include "system_stm32f4xx.h"
 
 #include <stdbool.h>
 #include <stdint.h>
-
+#ifndef UNIT_TEST
 #define GPIOA_BASE 0x40020000UL
 #define GPIOA      ((GPIO_Port *)GPIOA_BASE)
 
@@ -15,19 +17,18 @@
     (*(volatile uint32_t *)(RCC_BASE + 0x40))                // add 0x40 offset for APB1ENR register
 #define RCC_CFGR   (*(volatile uint32_t *)(RCC_BASE + 0x08)) // add 0x08 offset for CFGR register
 #define NVIC_ISER1 (*(volatile uint32_t *)0xE000E104UL)      // NVIC address
+#else
+#include "mock_registers.h"
+#define RCC_APB1ENR mock_rcc_apb1enr
+#define RCC_CFGR    mock_rcc_cfgr
+#define NVIC_ISER1  mock_nvic_iser1
+#define GPIOA_BASE  ((uintptr_t) & mock_gpioa)
+#define GPIOA       ((GPIO_Port *)GPIOA_BASE)
+#define USART2_BASE ((uintptr_t) & mock_usart2)
+#define USART2      ((USART_Port *)USART2_BASE)
+#endif
 
 #define TIMEOUT (0x5000UL)
-
-typedef struct
-{
-    volatile uint32_t SR;   // 0x00 Status register
-    volatile uint32_t DR;   // 0x04 Data register
-    volatile uint32_t BRR;  // 0x08 Baud rate register
-    volatile uint32_t CR1;  // 0x0C Control register 1
-    volatile uint32_t CR2;  // 0x10 Control register 2
-    volatile uint32_t CR3;  // 0x14 Control register 3
-    volatile uint32_t GTPR; // 0x18 Guard time and prescaler
-} USART_Port;
 
 #define RX_BUF_SIZE 32 // must be a power of 2, for the masking trick below
 
@@ -165,17 +166,16 @@ void uart_write_u32(uint32_t value)
 void USART2_IRQHandler(void)
 {
     if (USART2->SR & (1 << 5))
-    { // RXNE set — a byte has arrived
+    {
         uint8_t byte = (uint8_t)USART2->DR;
 
         uint8_t next_head = (rx_buf.head + 1) & (RX_BUF_SIZE - 1);
         if (next_head != rx_buf.tail)
         {
-            // buffer not full — store the byte
             rx_buf.data[rx_buf.head] = byte;
             rx_buf.head              = next_head;
         }
-        // else: buffer full, byte is dropped (overrun) — see note below
+        // else: buffer full
     }
 }
 

@@ -1,14 +1,20 @@
 #include <gpio.h>
 #include <stdint.h>
+#ifndef UNIT_TEST
 #define RCC_BASE 0x40023800
 #define RCC_AHB1ENR                                                                                \
     (*(volatile uint32_t *)(RCC_BASE + 0x30)) // add 0x30 offset for AHB1ENR register
 #define GPIOA_BASE 0x40020000UL
+#else
+#include "mock_registers.h"
+#define RCC_AHB1ENR mock_rcc_ahb1enr
+#define GPIOA_BASE  ((uintptr_t) & mock_gpioa)
+#endif
 
 void GPIO_Init(GPIO_Port *port, uint8_t pin, GPIO_Config config)
 {
     volatile uint32_t dummy;
-    uint32_t offset = ((uint32_t)port - GPIOA_BASE) /
+    uint32_t offset = ((uintptr_t)port - GPIOA_BASE) /
                       0x400UL; // divides by port size (0x400UL) to get port number
     RCC_AHB1ENR |= (1 << offset);
     dummy = RCC_AHB1ENR;
