@@ -141,6 +141,7 @@ int main(void)
     RUN_TEST(test_toggle_bssr_high);
     RUN_TEST(test_toggle_bssr_low);
     RUN_TEST(test_read);
+    RUNTEST(test_read_reset);
 
     UNITY_END();
 
