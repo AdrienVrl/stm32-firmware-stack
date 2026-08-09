@@ -18,7 +18,7 @@ repos:
     rev: v18.1.8
     hooks:
       - id: clang-format
-        types: [c, c++]
+        types_or: [c, c++]
         args: ['--style=file']
 
   # CMake formatting
