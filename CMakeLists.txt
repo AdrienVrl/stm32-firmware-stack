@@ -21,6 +21,8 @@ endif()
 
 project(stm32_firmware C ASM)
 
+enable_testing()
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)

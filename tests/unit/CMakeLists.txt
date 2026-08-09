@@ -4,10 +4,11 @@
 # Shared across all test executables — provides fake STM32 register structs.
 # Every test below depends on this, so the whole file is a no-op until
 # mock_registers.c lands; tests then register themselves automatically.
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mock_registers.c)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mocks/mock_registers.c)
 
-  add_library(mock_registers STATIC mock_registers.c)
-  target_include_directories(mock_registers PUBLIC .)
+  add_library(mock_registers STATIC mocks/mock_registers.c)
+  target_include_directories(mock_registers
+                             PUBLIC . ${CMAKE_SOURCE_DIR}/bsp/include)
   target_compile_definitions(mock_registers PUBLIC UNIT_TEST)
 
   # ── Helper function to reduce boilerplate
@@ -56,8 +57,14 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mock_registers.c)
   endif()
 
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_uart.c)
-    add_unit_test(NAME test_uart SOURCES test_uart.c
-                  ${CMAKE_SOURCE_DIR}/bsp/src/uart.c mocks/mock_registers.c)
+    add_unit_test(
+      NAME
+      test_uart
+      SOURCES
+      test_uart.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/uart.c
+      mocks/mock_registers.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c)
   endif()
 
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_mel_frontend.c)
