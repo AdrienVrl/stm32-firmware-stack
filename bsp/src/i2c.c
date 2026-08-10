@@ -6,6 +6,7 @@
 
 #include <stdint.h>
 
+#ifndef UNIT_TEST
 #define RCC_BASE 0x40023800
 #define RCC_APB1ENR                                                                                \
     (*(volatile uint32_t *)(RCC_BASE + 0x40))              // add 0x40 offset for APB1ENR register
@@ -19,6 +20,16 @@
 
 #define I2C1_BASE 0x40005400UL
 #define I2C1      ((I2C_TypeDef *)I2C1_BASE)
+
+#else
+#include "mock_registers.h"
+#define RCC_APB1ENR mock_rcc_apb1enr
+#define RCC_AHB1ENR mock_rcc_ahb1enr
+#define GPIOB_BASE  ((uintptr_t) & mock_gpioa)
+#define GPIOB       ((GPIO_Port *)GPIOB_BASE)
+#define I2C1_BASE   ((uintptr_t) & mock_i2c)
+#define I2C1        ((I2C_TypeDef *)I2C1_BASE)
+#endif
 
 #define TIMEOUT (0x5000UL)
 
@@ -56,7 +67,7 @@ void i2c_init(uint32_t speed_hz)
         trise_value = pclk1_mhz + 1;
 
         I2C1->CCR = ccr_value & 0xFFF;
-        // F/S bit (bit 15) and DUTY bit (bit 14) stay 0 — standard mode
+        // F/S bit (bit 15) and DUTY bit (bit 14) stay 0 (standard mode)
     }
     else
     {
