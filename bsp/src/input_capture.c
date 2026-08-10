@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-
+#ifndef UNIT_TEST
 #define RCC_BASE 0x40023800
 #define RCC_APB1ENR                                                                                \
     (*(volatile uint32_t *)(RCC_BASE + 0x40))                // add 0x40 offset for APB1ENR register
@@ -21,6 +21,16 @@
 
 #define GPIOA_BASE 0x40020000UL
 #define GPIOA      ((GPIO_Port *)GPIOA_BASE)
+#else
+#include "mock_registers.h"
+#define RCC_APB1ENR mock_rcc_apb1enr
+#define RCC_CFGR    mock_rcc_cfgr
+#define GPIOA_BASE  ((uintptr_t) & mock_gpioa)
+#define GPIOA       ((GPIO_Port *)GPIOA_BASE)
+#define TIM3_BASE   ((uintptr_t) & mock_tim)
+#define TIM3        ((TIM_TypeDef *)TIM3_BASE)
+#define NVIC_ISER0  mock_nvic_iser0
+#endif
 
 void input_capture_init(void)
 {

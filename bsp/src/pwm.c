@@ -4,7 +4,7 @@
 #include "uart.h"
 
 #include <stdint.h>
-
+#ifndef UNIT_TEST
 #define RCC_BASE 0x40023800
 #define RCC_APB1ENR                                                                                \
     (*(volatile uint32_t *)(RCC_BASE + 0x40))              // add 0x40 offset for APB1ENR register
@@ -15,6 +15,16 @@
 
 #define GPIOA_BASE 0x40020000UL
 #define GPIOA      ((GPIO_Port *)GPIOA_BASE)
+#else
+
+#include "mock_registers.h"
+#define RCC_APB1ENR mock_rcc_apb1enr
+#define RCC_CFGR    mock_rcc_cfgr
+#define GPIOA_BASE  ((uintptr_t) & mock_gpioa)
+#define GPIOA       ((GPIO_Port *)GPIOA_BASE)
+#define TIM2_BASE   ((uintptr_t) & mock_tim)
+#define TIM2        ((TIM_TypeDef *)TIM2_BASE)
+#endif
 
 
 void pwm_init(uint32_t freq_hz)

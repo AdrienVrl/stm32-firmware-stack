@@ -1,14 +1,13 @@
 #include "exti.h"
 
+#include "gpio.h"
+
+#include <stdint.h>
+#ifndef UNIT_TEST
 #include "FreeRTOS.h"
 
 #include "FreeRTOSConfig.h"
 #include "semphr.h"
-
-#include "gpio.h"
-
-#include <stdint.h>
-
 #define RCC_BASE 0x40023800
 #define RCC_AHB1ENR                                                                                \
     (*(volatile uint32_t *)(RCC_BASE + 0x30)) // add 0x30 offset for AHB1ENR register
@@ -25,7 +24,20 @@
 #define NVIC_ISER1 (*(volatile uint32_t *)0xE000E104UL)
 
 #define NVIC_IPR_BASE 0xE000E400UL
-#define NVIC_IPR(n)   (*(volatile uint8_t *)(NVIC_IPR_BASE + (n)))
+#else
+#include "mock_freertos.h"
+#include "mock_registers.h"
+#define RCC_AHB1ENR   mock_rcc_ahb1enr
+#define RCC_APB2ENR   mock_rcc_apb2enr
+#define GPIOC_BASE    ((uintptr_t) & mock_gpioa)
+#define GPIOC         ((GPIO_Port *)GPIOC_BASE)
+#define EXTI_BASE     ((uintptr_t) & mock_exti)
+#define EXTI          ((EXTI_TypeDef *)EXTI_BASE)
+#define SYSCFG_EXTICR mock_syscfg_exticr
+#define NVIC_ISER1    mock_nvic_iser1
+#define NVIC_IPR_BASE ((uintptr_t)mock_nvic_ipr)
+#endif
+#define NVIC_IPR(n) (*(volatile uint8_t *)(NVIC_IPR_BASE + (n)))
 
 void ButtonEXTI_Init(void)
 {

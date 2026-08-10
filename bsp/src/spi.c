@@ -5,13 +5,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
-
-#define SPI_DUMMY_BYTE 0xFF // filler value to clock out while reading
-#define RCC_BASE       0x40023800
+#ifndef UNIT_TEST
+#define RCC_BASE 0x40023800
 #define RCC_APB1ENR                                                                                \
-    (*(volatile uint32_t *)(RCC_BASE + 0x40)) // add 0x40 offset for APB1ENR register
+    (*(volatile uintptr_t *)(RCC_BASE + 0x40)) // add 0x40 offset for APB1ENR register
 #define RCC_AHB1ENR                                                                                \
-    (*(volatile uint32_t *)(RCC_BASE + 0x30)) // add 0x40 offset for APB1ENR register
+    (*(volatile uintptr_t *)(RCC_BASE + 0x30)) // add 0x40 offset for APB1ENR register
 
 #define GPIOB_BASE 0x40020400UL
 #define GPIOB      ((GPIO_Port *)GPIOB_BASE)
@@ -19,6 +18,17 @@
 #define SPI2_BASE 0x40003800UL
 #define SPI2      ((SPI_TypeDef *)SPI2_BASE)
 
+#define NVIC_ISER0 (*(volatile uintptr_t *)0xE000E100UL)
+#else
+#include "mock_registers.h"
+#define RCC_APB1ENR mock_rcc_apb1enr
+#define RCC_AHB1ENR mock_rcc_ahb1enr
+#define NVIC_ISER0  mock_nvic_iser0
+#define GPIOB_BASE  ((uintptr_t) & mock_gpioa)
+#define GPIOB       ((GPIO_Port *)GPIOB_BASE)
+#define SPI2_BASE   ((uintptr_t) & mock_spi)
+#define SPI2        ((SPI_TypeDef *)SPI2_BASE)
+#endif
 #define DMA1_BASE        0x40026000UL
 #define DMA1             ((DMA_TypeDef *)DMA1_BASE)
 #define DMA1_Stream3     (&DMA1->STREAM[3]) // SPI2_RX
@@ -28,10 +38,9 @@
 #define DMA_SxCR_MINC    (1 << 10)
 #define DMA_SxCR_DIR_M2P (1 << 6)
 #define DMA_SxCR_DIR_P2M (0)
-#define NVIC_ISER0       (*(volatile uint32_t *)0xE000E100UL)
 #define DMA_SxFCR_DMDIS  (1 << 2) // Direct mode disable
-
-#define TIMEOUT (0x5000UL)
+#define SPI_DUMMY_BYTE   0xFF     // filler value to clock out while reading
+#define TIMEOUT          (0x5000UL)
 
 
 static void RXNE_Error(void)
@@ -60,7 +69,7 @@ static inline void spi_cs_deselect(void)
 
 void spi_init(SPI_Config cfg)
 {
-    // PB12: software-controlled CS, plain GPIO output — NOT alternate function
+    // PB12: software-controlled CS
     GPIO_Config cs_cfg = {.mode  = GPIO_MODE_OUTPUT,
                           .otype = GPIO_OTYPE_PUSH_PULL,
                           .speed = GPIO_SPEED_VERY_HIGH,
@@ -90,13 +99,13 @@ void spi_init(SPI_Config cfg)
 
     cr1 |= (cfg.mode & 0x3);     // bits 0-1: CPHA, CPOL
     cr1 |= (cfg.prescaler << 3); // bits 3-5: BR[2:0]
-    cr1 |= (1 << 2);             // bit 2: MSTR — master mode
-    cr1 |= (1 << 8);             // bit 8: SSI — internal slave select high
-    cr1 |= (1 << 9);             // bit 9: SSM — software slave management
+    cr1 |= (1 << 2);             // bit 2: MSTR
+    cr1 |= (1 << 8);             // bit 8: SSI
+    cr1 |= (1 << 9);             // bit 9: SSM
 
     SPI2->CR1 = cr1;
 
-    SPI2->CR1 |= (1 << 6); // bit 6: SPE — enable peripheral, set last
+    SPI2->CR1 |= (1 << 6); // bit 6: SPE
 }
 
 uint8_t spi_transfer_byte(uint8_t data)
@@ -180,14 +189,14 @@ void spi_transfer_dma(const uint8_t *tx_buf, uint8_t *rx_buf, uint16_t len)
     DMA1->HIFCR = (0x3D << 0);        // clear Stream4 flags
 
     // RX stream: peripheral -> memory, real rx_buf, increment
-    DMA1_Stream3->PAR  = (uint32_t)&SPI2->DR;
-    DMA1_Stream3->M0AR = (uint32_t)rx_buf;
+    DMA1_Stream3->PAR  = (uintptr_t)&SPI2->DR;
+    DMA1_Stream3->M0AR = (uintptr_t)rx_buf;
     DMA1_Stream3->NDTR = len;
     DMA1_Stream3->CR   = (0 << 25) | DMA_SxCR_DIR_P2M | DMA_SxCR_MINC | DMA_SxCR_TCIE;
 
     // TX stream: memory -> peripheral, real tx_buf, increment
-    DMA1_Stream4->PAR  = (uint32_t)&SPI2->DR;
-    DMA1_Stream4->M0AR = (uint32_t)tx_buf;
+    DMA1_Stream4->PAR  = (uintptr_t)&SPI2->DR;
+    DMA1_Stream4->M0AR = (uintptr_t)tx_buf;
     DMA1_Stream4->NDTR = len;
     DMA1_Stream4->CR   = (0 << 25) | DMA_SxCR_DIR_M2P | DMA_SxCR_MINC | DMA_SxCR_TCIE;
 
@@ -210,13 +219,13 @@ void spi_write_dma(const uint8_t *data, uint16_t len)
     DMA1->HIFCR = 0x3D;
     DMA1->LIFCR = (0x3D << 22);
 
-    DMA1_Stream3->PAR  = (uint32_t)&SPI2->DR;
-    DMA1_Stream3->M0AR = (uint32_t)&spi_rx_trash;
+    DMA1_Stream3->PAR  = (uintptr_t)&SPI2->DR;
+    DMA1_Stream3->M0AR = (uintptr_t)&spi_rx_trash;
     DMA1_Stream3->NDTR = len;
     DMA1_Stream3->CR   = (0 << 25) | DMA_SxCR_DIR_P2M;
 
-    DMA1_Stream4->PAR  = (uint32_t)&SPI2->DR;
-    DMA1_Stream4->M0AR = (uint32_t)data;
+    DMA1_Stream4->PAR  = (uintptr_t)&SPI2->DR;
+    DMA1_Stream4->M0AR = (uintptr_t)data;
     DMA1_Stream4->NDTR = len;
     DMA1_Stream4->FCR &= ~DMA_SxFCR_DMDIS; // ensure direct mode (bypass FIFO)
 
@@ -244,13 +253,13 @@ void spi_read_dma(uint8_t *data, uint16_t len)
     DMA1->LIFCR = (0x3D << 22);       // 0b00111101 clears bits 22, 24, 25, 26, 27
     DMA1->HIFCR = 0x3D;               // 0b00111101 clears bits 0,2,3,4,5 (Stream 4's flags)
 
-    DMA1_Stream3->PAR  = (uint32_t)&SPI2->DR;
-    DMA1_Stream3->M0AR = (uint32_t)data;
+    DMA1_Stream3->PAR  = (uintptr_t)&SPI2->DR;
+    DMA1_Stream3->M0AR = (uintptr_t)data;
     DMA1_Stream3->NDTR = len;
     DMA1_Stream3->CR   = (0 << 25) | DMA_SxCR_DIR_P2M | DMA_SxCR_MINC | DMA_SxCR_TCIE;
 
-    DMA1_Stream4->PAR  = (uint32_t)&SPI2->DR;
-    DMA1_Stream4->M0AR = (uint32_t)&spi_dummy_byte;
+    DMA1_Stream4->PAR  = (uintptr_t)&SPI2->DR;
+    DMA1_Stream4->M0AR = (uintptr_t)&spi_dummy_byte;
     DMA1_Stream4->NDTR = len;
     DMA1_Stream4->FCR &= ~DMA_SxFCR_DMDIS; // ensure direct mode (bypass FIFO)
     DMA1_Stream3->FCR &= ~DMA_SxFCR_DMDIS; // ensure direct mode (bypass FIFO)
