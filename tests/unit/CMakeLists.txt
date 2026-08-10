@@ -125,9 +125,6 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mocks/mock_registers.c)
       mocks/mock_freertos.c
       ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c
       ${CMAKE_SOURCE_DIR}/bsp/src/exti.c
-      ${CMAKE_SOURCE_DIR}/bsp/include/FreeRTOSConfig.h
-      ${CMAKE_SOURCE_DIR}/third_party/FreeRTOS-Kernel/include/FreeRTOS.h
-      ${CMAKE_SOURCE_DIR}/third_party/FreeRTOS-Kernel/include/semphr.h
       ${CMAKE_SOURCE_DIR}/bsp/src/uart.c)
   endif()
 

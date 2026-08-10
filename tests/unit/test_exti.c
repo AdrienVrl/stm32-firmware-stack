@@ -36,6 +36,7 @@ void test_isr_gives_button_semaphore(void)
     EXTI15_10_IRQHandler();
     TEST_ASSERT_EQUAL(1, mock_semaphore_give_call_count);
     TEST_ASSERT_EQUAL_PTR(xButtonSemaphore, mock_last_semaphore_given);
+    TEST_ASSERT_EQUAL_HEX32((1 << 13), EXTI->PR & (1 << 13));
 }
 
 int main(void)
