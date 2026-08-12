@@ -1,0 +1,18 @@
+arm_add_firmware(
+  NAME
+  bootloader
+  LINKER
+  ${CMAKE_SOURCE_DIR}/bootloader/linker/bootloader.ld
+  FLASH_ADDR
+  0x08000000
+  SOURCES
+  ${CMAKE_SOURCE_DIR}/core/src/startup.c
+  ${CMAKE_SOURCE_DIR}/core/src/system_stm32f4xx.c
+  ${CMAKE_SOURCE_DIR}/core/src/syscall.c
+  ${CMAKE_SOURCE_DIR}/core/src/assert_handler.c
+  ${CMAKE_SOURCE_DIR}/bootloader/src/main.c
+  ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c
+  ${CMAKE_SOURCE_DIR}/bsp/src/uart.c
+  INCLUDES
+  ${CMAKE_SOURCE_DIR}/core/include
+  ${CMAKE_SOURCE_DIR}/bsp/include)

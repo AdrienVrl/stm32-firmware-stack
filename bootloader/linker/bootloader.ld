@@ -1,3 +1,4 @@
+
 /******************************************************************************
  * core/linker/application.ld
  * Linker script for STM32F446xE (512 KB Flash, 128 KB SRAM), Cortex-M4.
@@ -13,7 +14,7 @@ _Min_Heap_Size  = 0x200;   /* 512 B -- only relevant if you link malloc */
 
 MEMORY
 {
-  FLASH (rx)  : ORIGIN = 0x08008000, LENGTH = 480K
+  FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 32K
   SRAM  (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
 }
 
