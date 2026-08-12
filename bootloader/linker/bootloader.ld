@@ -1,7 +1,7 @@
 
 /******************************************************************************
- * core/linker/application.ld
- * Linker script for STM32F446xE (512 KB Flash, 128 KB SRAM), Cortex-M4.
+ * bootloader/linker/bootloader.ld
+ * Linker script for STM32F446xE (32 KB Flash, 128 KB SRAM), Cortex-M4.
  *****************************************************************************/
 
 ENTRY(Reset_Handler)

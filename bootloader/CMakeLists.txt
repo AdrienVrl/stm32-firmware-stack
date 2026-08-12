@@ -12,7 +12,6 @@ arm_add_firmware(
   ${CMAKE_SOURCE_DIR}/core/src/assert_handler.c
   ${CMAKE_SOURCE_DIR}/bootloader/src/main.c
   ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c
-  ${CMAKE_SOURCE_DIR}/bsp/src/uart.c
   INCLUDES
   ${CMAKE_SOURCE_DIR}/core/include
   ${CMAKE_SOURCE_DIR}/bsp/include)

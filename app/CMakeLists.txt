@@ -21,6 +21,7 @@ arm_add_firmware(
   ${CMAKE_SOURCE_DIR}/core/src/syscall.c
   ${CMAKE_SOURCE_DIR}/core/src/assert_handler.c
   ${CMAKE_SOURCE_DIR}/app/src/main.c
+  ${CMAKE_SOURCE_DIR}/app/src/freertos_vectors.c
   LIBS
   bsp
   freertos_kernel
