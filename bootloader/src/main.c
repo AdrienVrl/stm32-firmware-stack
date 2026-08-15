@@ -1,3 +1,4 @@
+#include "common.h"
 #include "gpio.h"
 
 #include <stdint.h>
@@ -14,12 +15,24 @@ int main(void)
         .alternate = 0 // unused, not in alternate mode
     };
     GPIO_Init(GPIOA, 5, ld2_cfg);
+    uint32_t stack_pointer = *(uint32_t *)0x08008000U;
 
-    while (1)
+    if ((stack_pointer < 0x20000000U) || (stack_pointer > 0x20020000U))
     {
-        GPIO_TogglePin(GPIOA, 5);
-        for (volatile int i = 0; i < 5000000; i++)
+
+        while (1)
         {
+            GPIO_TogglePin(GPIOA, 5);
+            for (volatile int i = 0; i < 1000000; i++)
+            {
+            }
         }
     }
+
+    uint32_t reset_handler = *(uint32_t *)0x08008004U;
+
+    __disable_irq();
+    SCB_VTOR = 0x08008000U;
+    __set_MSP(stack_pointer);
+    ((void (*)(void))reset_handler)();
 }

@@ -2,14 +2,16 @@ extern void vPortSVCHandler(void);
 extern void xPortPendSVHandler(void);
 extern void xPortSysTickHandler(void);
 
-void SVC_Handler(void)
+void __attribute__((naked)) SVC_Handler(void)
 {
-    vPortSVCHandler();
+    __asm volatile("b vPortSVCHandler");
 }
-void PendSV_Handler(void)
+
+void __attribute__((naked)) PendSV_Handler(void)
 {
-    xPortPendSVHandler();
+    __asm volatile("b xPortPendSVHandler");
 }
+
 void SysTick_Handler(void)
 {
     xPortSysTickHandler();

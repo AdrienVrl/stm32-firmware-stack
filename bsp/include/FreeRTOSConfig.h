@@ -629,7 +629,7 @@
  * configCHECK_HANDLER_INSTALLATION to 0.
  *
  * Defaults to 1 if left undefined. */
-#define configCHECK_HANDLER_INSTALLATION 1
+#define configCHECK_HANDLER_INSTALLATION 0
 
 /******************************************************************************/
 /* Definitions that include or exclude functionality. *************************/
