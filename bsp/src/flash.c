@@ -26,7 +26,7 @@
 #define FLASH_CR_SER       (1u << 1)
 #define FLASH_CR_MER       (1u << 2)
 #define FLASH_CR_SNB_POS   3u
-#define FLASH_CR_SNB_MSK   (0x1Fu << FLASH_CR_SNB_POS)
+#define FLASH_CR_SNB_MSK   (0xFu << FLASH_CR_SNB_POS)
 #define FLASH_CR_PSIZE_POS 8u
 #define FLASH_CR_PSIZE_MSK (0x3u << FLASH_CR_PSIZE_POS)
 #define FLASH_CR_PSIZE_X32 (0x2u << FLASH_CR_PSIZE_POS)

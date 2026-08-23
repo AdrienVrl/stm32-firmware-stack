@@ -112,7 +112,7 @@ def main():
             is_last = (offset + len(chunk)) >= image_size
             if is_last:
                 sys.exit(
-                    "CRC mismatch reported by bootloader - image did not verify. "
+                    "Update failed on the final chunk: either a CRC mismatch or a flash write error. "
                     "Reset the board and try again."
                 )
             sys.exit(

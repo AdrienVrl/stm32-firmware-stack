@@ -68,10 +68,7 @@ bool update_try_enter(void)
                 matched = (byte == magic[0]) ? 1u : 0u;
             }
         }
-        else
-        {
-            timeout--;
-        }
+        timeout--;
     }
     return false;
 }
