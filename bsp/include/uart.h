@@ -23,6 +23,8 @@ void uart_write_byte(uint8_t byte);
 
 void uart_write_str(const char *str);
 
+void uart_wait_tx_complete(void);
+
 void uart_write_u32(uint32_t value);
 
 bool uart_read_byte(uint8_t *out);

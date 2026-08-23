@@ -11,8 +11,13 @@ arm_add_firmware(
   ${CMAKE_SOURCE_DIR}/core/src/syscall.c
   ${CMAKE_SOURCE_DIR}/core/src/assert_handler.c
   ${CMAKE_SOURCE_DIR}/bootloader/src/main.c
+  ${CMAKE_SOURCE_DIR}/bootloader/src/update.c
+  ${CMAKE_SOURCE_DIR}/bootloader/src/update_protocol.c
   ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c
   ${CMAKE_SOURCE_DIR}/bsp/src/uart.c
+  ${CMAKE_SOURCE_DIR}/bsp/src/flash.c
+  ${CMAKE_SOURCE_DIR}/bsp/src/crc32.c
   INCLUDES
   ${CMAKE_SOURCE_DIR}/core/include
-  ${CMAKE_SOURCE_DIR}/bsp/include)
+  ${CMAKE_SOURCE_DIR}/bsp/include
+  ${CMAKE_SOURCE_DIR}/bootloader/include)
