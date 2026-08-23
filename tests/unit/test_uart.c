@@ -123,6 +123,13 @@ void test_read_byte_overrun_buffer(void)
     TEST_ASSERT_FALSE(uart_read_byte(&out));
 }
 
+void test_wait_tx_complete_returns_when_tc_set(void)
+{
+    uart_init(115200);
+    mock_usart2.SR |= (1 << 6);
+    uart_wait_tx_complete();
+}
+
 int main(void)
 {
     UNITY_BEGIN();
@@ -138,6 +145,7 @@ int main(void)
     RUN_TEST(test_read_byte_after_interrupt);
     RUN_TEST(test_read_byte_empty_buffer);
     RUN_TEST(test_read_byte_overrun_buffer);
+    RUN_TEST(test_wait_tx_complete_returns_when_tc_set);
 
     UNITY_END();
 

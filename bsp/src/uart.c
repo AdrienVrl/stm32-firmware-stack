@@ -104,6 +104,14 @@ void uart_write_byte(uint8_t byte)
     USART2->DR = byte;
 }
 
+void uart_wait_tx_complete(void)
+{
+    while (!(USART2->SR & (1 << 6)))
+    {
+        // wait for TC
+    }
+}
+
 void uart_write_str(const char *str)
 {
     while (*str)

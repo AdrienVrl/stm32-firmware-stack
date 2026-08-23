@@ -1,5 +1,7 @@
 #include "common.h"
 #include "gpio.h"
+#include "uart.h"
+#include "update.h"
 
 #include <stdint.h>
 #define GPIOA_BASE 0x40020000UL
@@ -7,14 +9,19 @@
 
 int main(void)
 {
-    GPIO_Config ld2_cfg = {
-        .mode      = GPIO_MODE_OUTPUT,
-        .otype     = GPIO_OTYPE_PUSH_PULL,
-        .speed     = GPIO_SPEED_LOW,
-        .pupd      = GPIO_PUPD_NONE,
-        .alternate = 0 // unused, not in alternate mode
-    };
+    GPIO_Config ld2_cfg = {.mode      = GPIO_MODE_OUTPUT,
+                           .otype     = GPIO_OTYPE_PUSH_PULL,
+                           .speed     = GPIO_SPEED_LOW,
+                           .pupd      = GPIO_PUPD_NONE,
+                           .alternate = 0};
     GPIO_Init(GPIOA, 5, ld2_cfg);
+    uart_init(115200);
+
+    if (update_try_enter())
+    {
+        update_run_session();
+    }
+
     uint32_t stack_pointer = *(uint32_t *)0x08008000U;
 
     if ((stack_pointer < 0x20000000U) || (stack_pointer > 0x20020000U))

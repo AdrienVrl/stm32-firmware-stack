@@ -23,6 +23,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mocks/mock_registers.c)
       ${ARG_NAME}
       PRIVATE ${CMAKE_SOURCE_DIR}/bsp/include
               ${CMAKE_SOURCE_DIR}/app/include
+              ${CMAKE_SOURCE_DIR}/bootloader/include
               ${CMAKE_SOURCE_DIR}/ml/include
               ${CMAKE_SOURCE_DIR}/core/include
               ${CMAKE_CURRENT_SOURCE_DIR} # for mock_registers.h
@@ -126,6 +127,24 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mocks/mock_registers.c)
       ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c
       ${CMAKE_SOURCE_DIR}/bsp/src/exti.c
       ${CMAKE_SOURCE_DIR}/bsp/src/uart.c)
+  endif()
+
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_crc32.c)
+    add_unit_test(
+      NAME
+      test_crc32
+      SOURCES
+      test_crc32.c
+      mocks/mock_registers.c
+      mocks/mock_freertos.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/crc32.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/uart.c)
+  endif()
+
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_update.c)
+    add_unit_test(NAME test_update SOURCES test_update.c
+                  ${CMAKE_SOURCE_DIR}/bootloader/src/update_protocol.c)
   endif()
 
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_mel_frontend.c)
