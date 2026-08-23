@@ -1,6 +1,10 @@
 #ifndef COMMON_H
 #define COMMON_H
 
+#define SCB_BASE  (0xE000ED00UL)
+#define SCB_CPACR (*(volatile uint32_t *)(SCB_BASE + 0x88UL))
+#define SCB_VTOR  (*(volatile uint32_t *)(SCB_BASE + 0x08UL))
+
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -115,6 +119,12 @@ void assert_failed(const char *file, uint32_t line);
 __attribute__((always_inline)) static inline void __disable_irq(void)
 {
     __asm volatile("cpsid i" ::: "memory");
+}
+
+
+__attribute__((always_inline)) static inline void __set_MSP(uint32_t topOfStack)
+{
+    __asm volatile("MSR msp, %0" : : "r"(topOfStack) :);
 }
 
 #endif // COMMON_H

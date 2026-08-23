@@ -14,14 +14,16 @@ arm_add_firmware(
   LINKER
   ${CMAKE_SOURCE_DIR}/core/linker/application.ld
   FLASH_ADDR
-  0x08000000
+  0x08008000
   SOURCES
   ${CMAKE_SOURCE_DIR}/core/src/startup.c
   ${CMAKE_SOURCE_DIR}/core/src/system_stm32f4xx.c
   ${CMAKE_SOURCE_DIR}/core/src/syscall.c
   ${CMAKE_SOURCE_DIR}/core/src/assert_handler.c
   ${CMAKE_SOURCE_DIR}/app/src/main.c
+  ${CMAKE_SOURCE_DIR}/app/src/freertos_vectors.c
   LIBS
   bsp
+  freertos_kernel
   INCLUDES
   ${CMAKE_SOURCE_DIR}/core/include)

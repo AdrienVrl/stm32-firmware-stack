@@ -4,10 +4,11 @@
 # Shared across all test executables — provides fake STM32 register structs.
 # Every test below depends on this, so the whole file is a no-op until
 # mock_registers.c lands; tests then register themselves automatically.
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mock_registers.c)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mocks/mock_registers.c)
 
-  add_library(mock_registers STATIC mock_registers.c)
-  target_include_directories(mock_registers PUBLIC .)
+  add_library(mock_registers STATIC mocks/mock_registers.c)
+  target_include_directories(mock_registers
+                             PUBLIC . ${CMAKE_SOURCE_DIR}/bsp/include)
   target_compile_definitions(mock_registers PUBLIC UNIT_TEST)
 
   # ── Helper function to reduce boilerplate
@@ -22,6 +23,7 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mock_registers.c)
       ${ARG_NAME}
       PRIVATE ${CMAKE_SOURCE_DIR}/bsp/include
               ${CMAKE_SOURCE_DIR}/app/include
+              ${CMAKE_SOURCE_DIR}/bootloader/include
               ${CMAKE_SOURCE_DIR}/ml/include
               ${CMAKE_SOURCE_DIR}/core/include
               ${CMAKE_CURRENT_SOURCE_DIR} # for mock_registers.h
@@ -56,8 +58,93 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mock_registers.c)
   endif()
 
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_uart.c)
-    add_unit_test(NAME test_uart SOURCES test_uart.c
-                  ${CMAKE_SOURCE_DIR}/bsp/src/uart.c mocks/mock_registers.c)
+    add_unit_test(
+      NAME
+      test_uart
+      SOURCES
+      test_uart.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/uart.c
+      mocks/mock_registers.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c)
+  endif()
+
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_spi.c)
+    add_unit_test(
+      NAME
+      test_spi
+      SOURCES
+      test_spi.c
+      mocks/mock_registers.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/spi.c)
+  endif()
+
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_i2c.c)
+    add_unit_test(
+      NAME
+      test_i2c
+      SOURCES
+      test_i2c.c
+      mocks/mock_registers.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/i2c.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/uart.c)
+  endif()
+
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_pwm.c)
+    add_unit_test(
+      NAME
+      test_pwm
+      SOURCES
+      test_pwm.c
+      mocks/mock_registers.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/pwm.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/uart.c)
+  endif()
+
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_input_capture.c)
+    add_unit_test(
+      NAME
+      test_input_capture
+      SOURCES
+      test_input_capture.c
+      mocks/mock_registers.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/pwm.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/input_capture.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/uart.c)
+  endif()
+
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_exti.c)
+    add_unit_test(
+      NAME
+      test_exti
+      SOURCES
+      test_exti.c
+      mocks/mock_registers.c
+      mocks/mock_freertos.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/exti.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/uart.c)
+  endif()
+
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_crc32.c)
+    add_unit_test(
+      NAME
+      test_crc32
+      SOURCES
+      test_crc32.c
+      mocks/mock_registers.c
+      mocks/mock_freertos.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/gpio.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/crc32.c
+      ${CMAKE_SOURCE_DIR}/bsp/src/uart.c)
+  endif()
+
+  if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_update.c)
+    add_unit_test(NAME test_update SOURCES test_update.c
+                  ${CMAKE_SOURCE_DIR}/bootloader/src/update_protocol.c)
   endif()
 
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_mel_frontend.c)

@@ -61,7 +61,7 @@ void SystemInit(void)
      * SRAM, or if a bootloader hands off execution with VTOR already
      * pointing elsewhere.
      *--------------------------------------------------------------*/
-    SCB_VTOR = (uint32_t)g_pfnVectors;
+    SCB_VTOR = (uintptr_t)g_pfnVectors;
 }
 
 /*-----------------------------------------------------------------------*/
