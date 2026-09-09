@@ -7,20 +7,17 @@ Original file is located at
     https://colab.research.google.com/drive/1s9inCogIYI1V_kbWiWvwpIk7-7xWPsXL
 """
 
-!rm -rf data/speech_commands_v0.02
-!mkdir -p data/speech_commands_v0.02
-
-!wget -c https://storage.googleapis.com/download.tensorflow.org/data/speech_commands_v0.02.tar.gz \
-    -P data/speech_commands_v0.02
-
-# tar -tzf lists the archive contents and fails loudly on a corrupt/truncated
-# file, instead of silently extracting a partial dataset
-!tar -tzf data/speech_commands_v0.02/speech_commands_v0.02.tar.gz > /dev/null && echo "archive OK"
-
-!tar -xzf data/speech_commands_v0.02/speech_commands_v0.02.tar.gz -C data/speech_commands_v0.02
-
 import pathlib
 import tensorflow as tf
+import random
+import numpy as np
+import subprocess
+
+subprocess.run(["rm", "-rf", "data/speech_commands_v0.02"])
+subprocess.run(["mkdir", "-p", "data/speech_commands_v0.02"])
+subprocess.run(["wget", "-c", "https://storage.googleapis.com/download.tensorflow.org/data/speech_commands_v0.02.tar.gz", "-P", "data/speech_commands_v0.02"])
+subprocess.run(["tar", "-tzf", "data/speech_commands_v0.02/speech_commands_v0.02.tar.gz", ">", "/dev/null", "&&", "echo", "archive OK"])
+subprocess.run(["tar", "-xzf", "data/speech_commands_v0.02/speech_commands_v0.02.tar.gz", "-C", "data/speech_commands_v0.02"])
 
 DATA_URL = "https://storage.googleapis.com/download.tensorflow.org/data/speech_commands_v0.02.tar.gz"
 data_dir = pathlib.Path("data/speech_commands_v0.02")
@@ -61,10 +58,6 @@ def extract_mfcc(waveform):  # waveform: 16000 float32 samples in [-1, 1]
 
     mfcc = tf.signal.mfccs_from_log_mel_spectrograms(log_mel)
     return mfcc[..., :10]   # keep first 10 cepstral coefficients
-
-import pathlib
-import random
-import numpy as np
 
 DATA_DIR = pathlib.Path("data/speech_commands_v0.02")
 TARGET_WORDS = ["yes", "no", "up", "down", "left", "right", "on", "off", "stop", "go"]
@@ -198,9 +191,7 @@ train_ds = build_dataset(train_entries, make_silence_waveforms(bg_clips, train_t
 val_ds = build_dataset(val_entries, make_silence_waveforms(bg_clips, val_target_count), label_to_id, training=False)
 test_ds = build_dataset(test_entries, make_silence_waveforms(bg_clips, test_target_count), label_to_id, training=False)
 
-train_silence = make_silence_waveforms(bg_clips, train_target_count)
 val_silence = make_silence_waveforms(bg_clips, val_target_count)
-test_silence = make_silence_waveforms(bg_clips, test_target_count)
 
 def build_ds_cnn_s(num_classes=12):
     inputs = tf.keras.Input(shape=(49, 10, 1))
@@ -226,12 +217,23 @@ lr_schedule = tf.keras.optimizers.schedules.PiecewiseConstantDecay(
     boundaries=[10000, 20000],
     values=[5e-4, 1e-4, 2e-5],
 )
+
 model.compile(
     optimizer=tf.keras.optimizers.Adam(learning_rate=lr_schedule),
     loss="sparse_categorical_crossentropy",
     metrics=["accuracy"],
 )
-model.fit(train_ds, validation_data=val_ds, epochs=100)
+
+checkpoint_path = "ml/training/checkpoints/ds_cnn_s.weights.h5"
+checkpoint_cb = tf.keras.callbacks.ModelCheckpoint(
+    checkpoint_path,
+    monitor="val_accuracy",
+    save_best_only=True,
+    save_weights_only=True,
+)
+
+model.fit(train_ds, validation_data=val_ds, epochs=100, callbacks=[checkpoint_cb])
+model.load_weights(checkpoint_path)
 
 def build_calibration_dataset(entries, silence_waveforms, label_to_id, num_samples=300):
     paths = [p for p, _ in entries]
