@@ -8,15 +8,18 @@ Original file is located at
 """
 
 import pathlib
-import tensorflow as tf
 import random
-import numpy as np
 import subprocess
+
+import numpy as np
+import tensorflow as tf
 
 subprocess.run(["rm", "-rf", "data/speech_commands_v0.02"])
 subprocess.run(["mkdir", "-p", "data/speech_commands_v0.02"])
 subprocess.run(["wget", "-c", "https://storage.googleapis.com/download.tensorflow.org/data/speech_commands_v0.02.tar.gz", "-P", "data/speech_commands_v0.02"])
-subprocess.run(["tar", "-tzf", "data/speech_commands_v0.02/speech_commands_v0.02.tar.gz", ">", "/dev/null", "&&", "echo", "archive OK"])
+result = subprocess.run(["tar", "-tzf", "data/speech_commands_v0.02/speech_commands_v0.02.tar.gz"], stdout=subprocess.DEVNULL)
+  if result.returncode == 0:
+      print("archive OK")
 subprocess.run(["tar", "-xzf", "data/speech_commands_v0.02/speech_commands_v0.02.tar.gz", "-C", "data/speech_commands_v0.02"])
 
 DATA_URL = "https://storage.googleapis.com/download.tensorflow.org/data/speech_commands_v0.02.tar.gz"
