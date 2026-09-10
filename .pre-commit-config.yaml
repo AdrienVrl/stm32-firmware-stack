@@ -1,3 +1,4 @@
+exclude: '^ml/(include|src|lib|network_generate_report)/'
 repos:
   # Standard file hygiene
   - repo: https://github.com/pre-commit/pre-commit-hooks

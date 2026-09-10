@@ -25,5 +25,6 @@ arm_add_firmware(
   LIBS
   bsp
   freertos_kernel
+  ml
   INCLUDES
   ${CMAKE_SOURCE_DIR}/core/include)
