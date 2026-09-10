@@ -11,15 +11,21 @@
 #include "gpio.h"
 #include "i2c.h"
 #include "input_capture.h"
+#include "network.h"
+#include "network_data.h"
 #include "pwm.h"
 #include "uart.h"
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #define GPIOA_BASE 0x40020000UL
 #define GPIOA      ((GPIO_Port *)GPIOA_BASE)
 #define GPIOC_BASE 0x40020800UL
 #define GPIOC      ((GPIO_Port *)GPIOC_BASE)
+
+STAI_ALIGNED(8) static uint8_t ai_ctx[STAI_NETWORK_CONTEXT_SIZE];
+STAI_ALIGNED(8) static uint8_t ai_activations[STAI_NETWORK_ACTIVATIONS_SIZE_BYTES];
 
 TaskHandle_t xTaskHandle1 = NULL;
 TaskHandle_t xTaskHandle2 = NULL;
@@ -247,11 +253,78 @@ void vWatchdogTask(void *pvParameters)
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
     UNUSED(xTask);
-    printf("stack overflow, task: %s", pcTaskName);
+    printf("stack overflow, task: %s\r\n", pcTaskName);
     portDISABLE_INTERRUPTS();
     while (1)
     {
     }
+}
+
+static void ai_smoke_test(void)
+{
+    stai_network *net = (stai_network *)ai_ctx;
+    stai_return_code rc;
+
+    rc = stai_network_init(net);
+    if (rc != STAI_SUCCESS)
+    {
+        printf("stai init failed: %d\r\n", (int)rc);
+        return;
+    }
+
+    const stai_ptr acts[STAI_NETWORK_ACTIVATIONS_NUM] = {ai_activations};
+    rc = stai_network_set_activations(net, acts, STAI_NETWORK_ACTIVATIONS_NUM);
+    if (rc != STAI_SUCCESS)
+    {
+        printf("set_activations failed: %d\r\n", (int)rc);
+        return;
+    }
+
+    const stai_ptr weights[STAI_NETWORK_WEIGHTS_NUM] = {(stai_ptr)g_network_weights_array};
+    rc = stai_network_set_weights(net, weights, STAI_NETWORK_WEIGHTS_NUM);
+    if (rc != STAI_SUCCESS)
+    {
+        printf("set_weights failed: %d\r\n", (int)rc);
+        return;
+    }
+
+    stai_ptr inputs[STAI_NETWORK_IN_NUM];
+    stai_ptr outputs[STAI_NETWORK_OUT_NUM];
+    stai_size n;
+
+    rc = stai_network_get_inputs(net, inputs, &n);
+    if (rc != STAI_SUCCESS)
+    {
+        printf("get_inputs failed: %d\r\n", (int)rc);
+        return;
+    }
+    rc = stai_network_get_outputs(net, outputs, &n);
+    if (rc != STAI_SUCCESS)
+    {
+        printf("get_outputs failed: %d\r\n", (int)rc);
+        return;
+    }
+
+    memset(inputs[0], 0, STAI_NETWORK_IN_1_SIZE_BYTES);
+
+    rc = stai_network_run(net, STAI_MODE_SYNC);
+    if (rc != STAI_SUCCESS)
+    {
+        printf("run failed: %d\r\n", (int)rc);
+        return;
+    }
+
+    const int8_t *logits = (const int8_t *)outputs[0];
+    int argmax           = 0;
+    for (int i = 0; i < STAI_NETWORK_OUT_1_SIZE; i++)
+    {
+        printf("out[%d] = %d\r\n", i, (int)logits[i]);
+        if (logits[i] > logits[argmax])
+            argmax = i;
+    }
+    printf("stai smoke test OK, argmax=%d\r\n", argmax);
+
+    stai_network_deinit(net);
 }
 
 int main(void)
@@ -348,6 +421,7 @@ int main(void)
             ;
     }
 
+    ai_smoke_test();
     vTaskStartScheduler();
 
     /* Should never reach here */
