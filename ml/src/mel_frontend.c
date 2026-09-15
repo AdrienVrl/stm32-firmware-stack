@@ -734,7 +734,7 @@ void mel_frontend_process(const int16_t *pcm_ring, uint32_t start_idx, float out
             {
                 sum += log_mel[m] * COS_TABLE[n][m];
             }
-            mfcc[n] = sqrt_scale * sum;
+            mfcc[n] = DCT_SCALE * sum;
         }
 
         // write to output array
