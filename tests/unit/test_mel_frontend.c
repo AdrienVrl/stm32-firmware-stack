@@ -18,7 +18,7 @@ void test_mel_frontend_process(void)
 {
     mel_frontend_init();
     float out_mfcc[49][10];
-    mel_frontend_process(REFERENCE_PCM, out_mfcc);
+    mel_frontend_process(REFERENCE_PCM, 0, out_mfcc);
     for (int i = 0; i < 49; i++)
     {
         for (int j = 0; j < 10; j++)
