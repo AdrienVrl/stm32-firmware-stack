@@ -107,6 +107,6 @@ with open("reference_mfcc.h", "w") as f:
     f.write("\n\n#endif\n")
 
 with open("cos_table.h", "w") as f:
-    f.write("#ifndef COS_TABLEH\n#define COS_TABLE_H\n\n")
+    f.write("#ifndef COS_TABLE_H\n#define COS_TABLE_H\n\n")
     f.write(format_c_array_2d("COS_TABLE", a))
     f.write("\n\n#endif\n")
