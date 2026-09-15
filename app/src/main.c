@@ -16,6 +16,7 @@
 #include "network.h"
 #include "network_data.h"
 #include "pwm.h"
+#include "system_stm32f4xx.h"
 #include "uart.h"
 
 #include <stdint.h>
@@ -25,6 +26,9 @@
 #define GPIOA      ((GPIO_Port *)GPIOA_BASE)
 #define GPIOC_BASE 0x40020800UL
 #define GPIOC      ((GPIO_Port *)GPIOC_BASE)
+#define DEMCR      (*(volatile uint32_t *)0xE000EDFCUL)
+#define DWT_CTRL   (*(volatile uint32_t *)0xE0001000UL)
+#define DWT_CYCCNT (*(volatile uint32_t *)0xE0001004UL)
 
 STAI_ALIGNED(8) static uint8_t ai_ctx[STAI_NETWORK_CONTEXT_SIZE];
 STAI_ALIGNED(8) static uint8_t ai_activations[STAI_NETWORK_ACTIVATIONS_SIZE_BYTES];
@@ -254,9 +258,13 @@ void vButtonTask(void *pvParameters)
                 continue;
             }
 
+            uint32_t start = DWT_CYCCNT;
             __disable_irq();
             mel_frontend_process(i2s_get_ring(), i2s_get_ring_write_idx(), s_mfcc);
             __enable_irq();
+            uint32_t cycles = DWT_CYCCNT - start;
+            printf("mel_frontend_process: %lu cycles (%.2f ms)\r\n", (unsigned long)cycles,
+                   (double)cycles / SystemCoreClock * 1000.0);
 
             stai_ptr inputs[STAI_NETWORK_IN_NUM];
             stai_ptr outputs[STAI_NETWORK_OUT_NUM];
@@ -412,6 +420,10 @@ int main(void)
         .alternate = 0 // unused, not in alternate mode
     };
     GPIO_Init(GPIOA, 5, ld2_cfg);
+
+    DEMCR |= (1 << 24);   /* TRCENA — enable the trace/debug subsystem */
+    DWT_CTRL |= (1 << 0); /* CYCCNTENA — enable the free-running cycle counter */
+    DWT_CYCCNT = 0;
 
     xButtonSemaphore = xSemaphoreCreateBinary();
     ButtonEXTI_Init();
