@@ -176,21 +176,14 @@ void i2s_stop(void)
     SPI3->I2SCFGR &= ~(1 << 10);
     DMA1_Stream0->CR &= ~(1 << 0);
 }
-
-void i2s_get_window(int16_t *out)
+const int16_t *i2s_get_ring(void)
 {
-    __disable_irq();
-    uint32_t write_idx = s_ring_write_idx;
+    return (const int16_t *)s_ring;
+}
 
-    /* Oldest sample is right after the current write pointer (ring wraps). */
-    uint32_t read_idx = write_idx;
-    for (uint32_t i = 0; i < I2S_MIC_WINDOW_SAMPLES; i++)
-    {
-        out[i]   = s_ring[read_idx];
-        read_idx = (read_idx + 1u) % I2S_MIC_WINDOW_SAMPLES;
-    }
-
-    __enable_irq();
+uint32_t i2s_get_ring_write_idx(void)
+{
+    return s_ring_write_idx;
 }
 
 bool i2s_window_ready(void)

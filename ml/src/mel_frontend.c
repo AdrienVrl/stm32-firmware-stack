@@ -667,7 +667,12 @@ void mel_frontend_init(void)
     ASSERT(status == ARM_MATH_SUCCESS);
 }
 
-void mel_frontend_process(const int16_t pcm[16000], float out_mfcc[49][10])
+static int16_t ring_sample(const int16_t *ring, uint32_t start_idx, uint32_t offset)
+{
+    return ring[(start_idx + offset) % 16000u];
+}
+
+void mel_frontend_process(const int16_t *pcm_ring, uint32_t start_idx, float out_mfcc[49][10])
 {
 
     // frame
@@ -677,7 +682,8 @@ void mel_frontend_process(const int16_t pcm[16000], float out_mfcc[49][10])
         // normalize, window and pad
         for (int j = 0; j < 640; j++)
         {
-            frame[j] = (pcm[i * 320 + j] / 32768.0f) * HANN_WINDOW_TABLE[j];
+            frame[j] =
+                (ring_sample(pcm_ring, start_idx, i * 320 + j) / 32768.0f) * HANN_WINDOW_TABLE[j];
         }
         for (int j = 640; j < 1024; j++)
         {

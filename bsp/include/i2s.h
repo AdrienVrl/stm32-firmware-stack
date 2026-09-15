@@ -19,7 +19,9 @@ void i2s_start(void);
 
 void i2s_stop(void);
 
-void i2s_get_window(int16_t *out);
+const int16_t *i2s_get_ring(void);
+
+uint32_t i2s_get_ring_write_idx(void);
 
 bool i2s_window_ready(void);
 

@@ -51,7 +51,6 @@ uint32_t processed_drop_count_rcv;
 #define WDG_ALL_TASKS_BITS                                                                         \
     (WDG_BIT_SENSOR_READER | WDG_BIT_PROCESSOR | WDG_BIT_OUTPUT | WDG_BIT_HEARTBEAT)
 
-static int16_t s_pcm_buf[16000];
 static float s_mfcc[49][10];
 
 EventGroupHandle_t xWatchdogEvents;
@@ -255,8 +254,9 @@ void vButtonTask(void *pvParameters)
                 continue;
             }
 
-            i2s_get_window(s_pcm_buf);
-            mel_frontend_process(s_pcm_buf, s_mfcc);
+            __disable_irq();
+            mel_frontend_process(i2s_get_ring(), i2s_get_ring_write_idx(), s_mfcc);
+            __enable_irq();
 
             stai_ptr inputs[STAI_NETWORK_IN_NUM];
             stai_ptr outputs[STAI_NETWORK_OUT_NUM];
