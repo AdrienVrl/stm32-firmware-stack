@@ -34,6 +34,17 @@ add_docs_target()
 add_subdirectory(core)
 add_subdirectory(bsp)
 
+if(TARGET_PLATFORM STREQUAL "host")
+  set(HOST
+      ON
+      CACHE BOOL "Build CMSIS-DSP for host" FORCE)
+else()
+  set(CMSISCORE
+      ${CMAKE_SOURCE_DIR}/third_party/CMSIS-Core/CMSIS/Core
+      CACHE PATH "" FORCE)
+endif()
+add_subdirectory_if_exists(third_party/CMSIS-DSP)
+
 if(TARGET_PLATFORM STREQUAL "arm")
   add_library(freertos_config INTERFACE)
   target_include_directories(
@@ -47,7 +58,6 @@ if(TARGET_PLATFORM STREQUAL "arm")
       CACHE STRING "" FORCE)
   # Third-party dependencies
   add_subdirectory_if_exists(third_party/FreeRTOS-Kernel)
-  add_subdirectory_if_exists(third_party/CMSIS-DSP)
 
   add_subdirectory_if_exists(bootloader)
   add_subdirectory_if_exists(app)

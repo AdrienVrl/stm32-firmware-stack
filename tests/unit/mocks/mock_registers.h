@@ -1,5 +1,6 @@
 #ifndef MOCK_REGISTERS_H
 #define MOCK_REGISTERS_H
+#include "common.h"
 #include "exti.h"
 #include "gpio.h"
 #include "i2c.h"
@@ -26,5 +27,7 @@ extern uint32_t mock_nvic_iser1;
 extern uint8_t mock_nvic_ipr[64];
 
 void mock_registers_reset(void);
+
+void assert_failed(const char *file, uint32_t line);
 
 #endif

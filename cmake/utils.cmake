@@ -109,7 +109,7 @@ function(arm_add_firmware)
   add_executable(${ARG_NAME} ${ARG_SOURCES})
   target_include_directories(${ARG_NAME} PRIVATE ${ARG_INCLUDES})
 
-  target_link_libraries(${ARG_NAME} PRIVATE ${ARG_LIBS})
+  target_link_libraries(${ARG_NAME} PRIVATE ${ARG_LIBS} m)
 
   target_link_options(${ARG_NAME} PRIVATE -T${ARG_LINKER}
                       -Wl,-Map=${CMAKE_BINARY_DIR}/${ARG_NAME}.map)

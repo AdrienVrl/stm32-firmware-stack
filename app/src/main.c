@@ -10,10 +10,13 @@
 #include "exti.h"
 #include "gpio.h"
 #include "i2c.h"
+#include "i2s.h"
 #include "input_capture.h"
+#include "mel_frontend.h"
 #include "network.h"
 #include "network_data.h"
 #include "pwm.h"
+#include "system_stm32f4xx.h"
 #include "uart.h"
 
 #include <stdint.h>
@@ -23,6 +26,9 @@
 #define GPIOA      ((GPIO_Port *)GPIOA_BASE)
 #define GPIOC_BASE 0x40020800UL
 #define GPIOC      ((GPIO_Port *)GPIOC_BASE)
+#define DEMCR      (*(volatile uint32_t *)0xE000EDFCUL)
+#define DWT_CTRL   (*(volatile uint32_t *)0xE0001000UL)
+#define DWT_CYCCNT (*(volatile uint32_t *)0xE0001004UL)
 
 STAI_ALIGNED(8) static uint8_t ai_ctx[STAI_NETWORK_CONTEXT_SIZE];
 STAI_ALIGNED(8) static uint8_t ai_activations[STAI_NETWORK_ACTIVATIONS_SIZE_BYTES];
@@ -49,6 +55,8 @@ uint32_t processed_drop_count_rcv;
 #define WDG_ALL_TASKS_BITS                                                                         \
     (WDG_BIT_SENSOR_READER | WDG_BIT_PROCESSOR | WDG_BIT_OUTPUT | WDG_BIT_HEARTBEAT)
 
+static float s_mfcc[49][10];
+
 EventGroupHandle_t xWatchdogEvents;
 
 typedef struct
@@ -66,6 +74,25 @@ typedef struct
     float accel_g[3];
     float gyro_dps[3];
 } ProcessedData;
+
+typedef enum
+{
+    KEYWORD_YES     = 0,
+    KEYWORD_NO      = 1,
+    KEYWORD_UP      = 2,
+    KEYWORD_DOWN    = 3,
+    KEYWORD_LEFT    = 4,
+    KEYWORD_RIGHT   = 5,
+    KEYWORD_ON      = 6,
+    KEYWORD_OFF     = 7,
+    KEYWORD_STOP    = 8,
+    KEYWORD_GO      = 9,
+    KEYWORD_UNKNOWN = 10,
+    KEYWORD_SILENCE = 11,
+} keyword_t;
+
+static const char *const KEYWORD_NAMES[] = {"yes", "no",  "up",   "down", "left",    "right",
+                                            "on",  "off", "stop", "go",   "unknown", "silence"};
 
 uint16_t merge(uint8_t low, uint8_t high)
 {
@@ -166,10 +193,10 @@ void vSensorOutputTask(void *pvParameters)
             }
         }
 
-        printf("Accel_x: %f, Accel_y: %f, Accel_z: %f, Gyro_x: %f, Gyro_y: %f, "
+        /* printf("Accel_x: %f, Accel_y: %f, Accel_z: %f, Gyro_x: %f, Gyro_y: %f, "
                "Gyro_z: %f\r\n",
                xData.accel_g[0], xData.accel_g[1], xData.accel_g[2], xData.gyro_dps[0],
-               xData.gyro_dps[1], xData.gyro_dps[2]);
+               xData.gyro_dps[1], xData.gyro_dps[2]); */
 
         xEventGroupSetBits(xWatchdogEvents, WDG_BIT_OUTPUT);
     }
@@ -216,12 +243,61 @@ void vButtonTask(void *pvParameters)
 {
     UNUSED(pvParameters);
     configASSERT(xButtonSemaphore != NULL);
+    stai_network *network = (stai_network *)ai_ctx;
+    stai_return_code rc;
 
     for (;;)
     {
         if (xSemaphoreTake(xButtonSemaphore, portMAX_DELAY) == pdTRUE)
         {
-            printf("Button pressed\r\n");
+            printf("Button pressed, please say the command\r\n");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            if (!i2s_window_ready())
+            {
+                printf("mic window not ready yet\r\n");
+                continue;
+            }
+
+            uint32_t start = DWT_CYCCNT;
+            mel_frontend_process(i2s_get_ring(), i2s_get_ring_write_idx(), s_mfcc);
+            uint32_t cycles = DWT_CYCCNT - start;
+            printf("mel_frontend_process: %lu cycles (%.2f ms)\r\n", (unsigned long)cycles,
+                   (double)cycles / SystemCoreClock * 1000.0);
+
+            stai_ptr inputs[STAI_NETWORK_IN_NUM];
+            stai_ptr outputs[STAI_NETWORK_OUT_NUM];
+            stai_size n;
+
+            rc = stai_network_get_inputs(network, inputs, &n);
+            if (rc != STAI_SUCCESS)
+            {
+                printf("get_inputs failed: %d\r\n", (int)rc);
+                continue;
+            }
+            rc = stai_network_get_outputs(network, outputs, &n);
+            if (rc != STAI_SUCCESS)
+            {
+                printf("get_outputs failed: %d\r\n", (int)rc);
+                continue;
+            }
+
+            mel_frontend_quantize((const float(*)[10])s_mfcc, (int8_t *)inputs[0]);
+
+            rc = stai_network_run(network, STAI_MODE_SYNC);
+            if (rc != STAI_SUCCESS)
+            {
+                printf("run failed: rc=%#x\r\n", (unsigned)rc);
+                continue;
+            }
+            stai_network_get_outputs(network, outputs, &n);
+            const int8_t *logits = (const int8_t *)outputs[0];
+            int argmax           = 0;
+            for (int i = 0; i < STAI_NETWORK_OUT_1_SIZE; i++)
+            {
+                if (logits[i] > logits[argmax])
+                    argmax = i;
+            }
+            printf("prediction: %s\r\n", KEYWORD_NAMES[argmax]);
         }
     }
 }
@@ -260,7 +336,7 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
     }
 }
 
-static void ai_smoke_test(void)
+static void ai_network_init(void)
 {
     stai_network *net = (stai_network *)ai_ctx;
     stai_return_code rc;
@@ -322,9 +398,8 @@ static void ai_smoke_test(void)
         if (logits[i] > logits[argmax])
             argmax = i;
     }
-    printf("stai smoke test OK, argmax=%d\r\n", argmax);
 
-    stai_network_deinit(net);
+    printf("stai smoke test OK, prediction: %s\r\n", KEYWORD_NAMES[argmax]);
 }
 
 int main(void)
@@ -332,6 +407,8 @@ int main(void)
     uart_init(115200);
     i2c_init(1000);
     i2c_write_reg(0x68, 0x6B, 0x00);
+    i2s_init(I2S_MIC_SLOT_LEFT);
+    i2s_start();
 
     GPIO_Config ld2_cfg = {
         .mode      = GPIO_MODE_OUTPUT,
@@ -341,6 +418,10 @@ int main(void)
         .alternate = 0 // unused, not in alternate mode
     };
     GPIO_Init(GPIOA, 5, ld2_cfg);
+
+    DEMCR |= (1 << 24);   /* TRCENA — enable the trace/debug subsystem */
+    DWT_CTRL |= (1 << 0); /* CYCCNTENA — enable the free-running cycle counter */
+    DWT_CYCCNT = 0;
 
     xButtonSemaphore = xSemaphoreCreateBinary();
     ButtonEXTI_Init();
@@ -421,7 +502,8 @@ int main(void)
             ;
     }
 
-    ai_smoke_test();
+    mel_frontend_init();
+    ai_network_init();
     vTaskStartScheduler();
 
     /* Should never reach here */
