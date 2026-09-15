@@ -683,8 +683,10 @@ void mel_frontend_process(const int16_t *pcm_ring, uint32_t start_idx, float out
         // normalize, window and pad
         for (int j = 0; j < 640; j++)
         {
+            __disable_irq();
             frame[j] =
                 (ring_sample(pcm_ring, start_idx, i * 320 + j) / 32768.0f) * HANN_WINDOW_TABLE[j];
+            __enable_irq();
         }
         for (int j = 640; j < 1024; j++)
         {

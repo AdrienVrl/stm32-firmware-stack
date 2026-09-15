@@ -259,9 +259,7 @@ void vButtonTask(void *pvParameters)
             }
 
             uint32_t start = DWT_CYCCNT;
-            __disable_irq();
             mel_frontend_process(i2s_get_ring(), i2s_get_ring_write_idx(), s_mfcc);
-            __enable_irq();
             uint32_t cycles = DWT_CYCCNT - start;
             printf("mel_frontend_process: %lu cycles (%.2f ms)\r\n", (unsigned long)cycles,
                    (double)cycles / SystemCoreClock * 1000.0);
