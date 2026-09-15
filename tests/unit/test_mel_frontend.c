@@ -33,7 +33,7 @@ void test_mel_frontend_quantize(void)
 {
     mel_frontend_init();
     int8_t out_quantized[49][10];
-    mel_frontend_quantize(REFERENCE_MFCC, 0, (int8_t *)out_quantized);
+    mel_frontend_quantize(REFERENCE_MFCC, (int8_t *)out_quantized);
     for (int i = 0; i < 49; i++)
     {
         for (int j = 0; j < 10; j++)
