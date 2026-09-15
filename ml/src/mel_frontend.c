@@ -661,6 +661,7 @@ static float mag[513];
 static float mel[40];
 static float log_mel[40];
 static float mfcc[10];
+const float sqrt_scale = sqrtf(2.0 / 40.0);
 
 void mel_frontend_init(void)
 {
@@ -680,14 +681,14 @@ void mel_frontend_process(const int16_t *pcm_ring, uint32_t start_idx, float out
     for (int i = 0; i < 49; i++)
     {
 
+        __disable_irq();
         // normalize, window and pad
         for (int j = 0; j < 640; j++)
         {
-            __disable_irq();
             frame[j] =
                 (ring_sample(pcm_ring, start_idx, i * 320 + j) / 32768.0f) * HANN_WINDOW_TABLE[j];
-            __enable_irq();
         }
+        __enable_irq();
         for (int j = 640; j < 1024; j++)
         {
             frame[j] = 0.0f;
@@ -733,7 +734,7 @@ void mel_frontend_process(const int16_t *pcm_ring, uint32_t start_idx, float out
             {
                 sum += log_mel[m] * COS_TABLE[n][m];
             }
-            mfcc[n] = sqrtf(2.0 / 40.0) * sum;
+            mfcc[n] = sqrt_scale * sum;
         }
 
         // write to output array

@@ -120,7 +120,16 @@ void assert_failed(const char *file, uint32_t line);
 // Example: READ_FIELD(GPIOA->MODER, 2, 10) reads bits [11:10]
 #define READ_FIELD(reg, width, shift) (((reg) >> (shift)) & ((1UL << (width)) - 1))
 
-#ifndef __CMSIS_GCC_H
+#ifdef UNIT_TEST
+
+static inline void __disable_irq(void)
+{
+}
+static inline void __enable_irq(void)
+{
+}
+
+#elif !defined(__CMSIS_GCC_H)
 __attribute__((always_inline)) static inline void __disable_irq(void)
 {
     __asm volatile("cpsid i" ::: "memory");
