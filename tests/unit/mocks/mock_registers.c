@@ -6,6 +6,8 @@
 #include "uart.h"
 
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 uint32_t SystemCoreClock     = 16000000UL;
@@ -48,4 +50,11 @@ void mock_registers_reset(void)
     mock_nvic_iser1    = 0;
     mock_syscfg_exticr = 0;
     memset(mock_nvic_ipr, 0, sizeof(mock_nvic_ipr));
+}
+
+
+void assert_failed(const char *file, uint32_t line)
+{
+    fprintf(stderr, "ASSERT failed: %s:%u\n", file, line);
+    abort();
 }
