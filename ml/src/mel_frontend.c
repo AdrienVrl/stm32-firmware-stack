@@ -653,6 +653,7 @@ const float HANN_WINDOW_TABLE[640] = {0.0,
                                       9.637975896759077e-05,
                                       2.4095520335998266e-05};
 
+#define DCT_SCALE 0.223606798f
 
 static arm_rfft_fast_instance_f32 rfft_inst; /* init once, reuse across all 49 frames */
 static float frame[1024];
@@ -661,7 +662,6 @@ static float mag[513];
 static float mel[40];
 static float log_mel[40];
 static float mfcc[10];
-const float sqrt_scale = sqrtf(2.0 / 40.0);
 
 void mel_frontend_init(void)
 {
