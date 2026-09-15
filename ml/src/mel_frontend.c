@@ -2,6 +2,7 @@
 
 #include "arm_math.h"
 #include "common.h"
+#include "cos_table.h"
 #include "mel_matrix_data.h"
 #include "network.h"
 #include "network_data.h"
@@ -728,7 +729,7 @@ void mel_frontend_process(const int16_t *pcm_ring, uint32_t start_idx, float out
             float sum = 0;
             for (int m = 0; m < 40; m++)
             {
-                sum += log_mel[m] * cosf(PI / 40 * (m + 0.5) * n);
+                sum += log_mel[m] * COS_TABLE[n][m];
             }
             mfcc[n] = sqrtf(2.0 / 40.0) * sum;
         }

@@ -86,6 +86,11 @@ ZERO_POINT = int(
 q = np.round(mfcc / SCALE) + ZERO_POINT
 q = np.clip(q, -128, 127).astype(np.int8)
 
+a = np.zeros((10, 40))
+for i in range(10):
+    for j in range(40):
+        a[i, j] = np.cos(np.pi / 40 * (j + 0.5) * i)
+
 with open("reference_quantized.h", "w") as f:
     f.write("#ifndef REFERENCE_QUANTIZED_H\n#define REFERENCE_QUANTIZED_H\n\n")
     f.write(format_c_array_2d("REFERENCE_QUANTIZED", mfcc))
@@ -99,4 +104,9 @@ with open("reference_pcm.h", "w") as f:
 with open("reference_mfcc.h", "w") as f:
     f.write("#ifndef REFERENCE_MFCC_H\n#define REFERENCE_MFCC_H\n\n")
     f.write(format_c_array_2d("REFERENCE_MFCC", q))
+    f.write("\n\n#endif\n")
+
+with open("cos_table.h", "w") as f:
+    f.write("#ifndef COS_TABLEH\n#define COS_TABLE_H\n\n")
+    f.write(format_c_array_2d("COS_TABLE", a))
     f.write("\n\n#endif\n")
