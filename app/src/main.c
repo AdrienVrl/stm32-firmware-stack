@@ -40,8 +40,9 @@ TaskHandle_t xTaskHandle4 = NULL;
 TaskHandle_t xTaskHandle5 = NULL;
 TaskHandle_t xTaskHandle6 = NULL;
 TaskHandle_t xTaskHandle7 = NULL;
+TaskHandle_t xTaskHandle8 = NULL;
 
-QueueHandle_t xSensorQueue, xProcessorQueue;
+QueueHandle_t xSensorQueue, xProcessorQueue, xButtonQueue;
 uint32_t sensor_drop_count_snd;
 uint32_t sensor_drop_count_rcv;
 uint32_t processed_drop_count_snd;
@@ -74,6 +75,11 @@ typedef struct
     float accel_g[3];
     float gyro_dps[3];
 } ProcessedData;
+
+typedef struct
+{
+    uint32_t trigger_cycles; /* DWT_CYCCNT snapshot */
+} InferenceRequest;
 
 typedef enum
 {
@@ -222,13 +228,15 @@ void vStatsTask(void *pvParameters)
 
     for (;;)
     {
-        printf("HWM Reader=%lu Processor=%lu Output=%lu HeartBeat=%lu Button=%lu Watchdog=%lu\r\n",
+        printf("HWM Reader=%lu Processor=%lu Output=%lu HeartBeat=%lu Button=%lu Watchdog=%lu "
+               "Inference=%lu\r\n",
                (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle1),
                (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle2),
                (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle3),
                (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle4),
                (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle5),
-               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle6));
+               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle6),
+               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle8));
 
         printf("HeapSize=%lu FreeHeapSize=%lu\r\n", (unsigned long)xPortGetFreeHeapSize(),
                (unsigned long)xPortGetMinimumEverFreeHeapSize());
@@ -243,8 +251,6 @@ void vButtonTask(void *pvParameters)
 {
     UNUSED(pvParameters);
     configASSERT(xButtonSemaphore != NULL);
-    stai_network *network = (stai_network *)ai_ctx;
-    stai_return_code rc;
 
     for (;;)
     {
@@ -258,6 +264,24 @@ void vButtonTask(void *pvParameters)
                 continue;
             }
 
+            InferenceRequest req = {.trigger_cycles = DWT_CYCCNT};
+            xQueueSend(xButtonQueue, &req, portMAX_DELAY);
+        }
+    }
+}
+
+void vInferenceTask(void *pvParameters)
+{
+
+    UNUSED(pvParameters);
+    stai_network *network = (stai_network *)ai_ctx;
+    stai_return_code rc;
+
+    for (;;)
+    {
+        InferenceRequest req;
+        if (xQueueReceive(xButtonQueue, &req, portMAX_DELAY) == pdTRUE)
+        {
             uint32_t start = DWT_CYCCNT;
             mel_frontend_process(i2s_get_ring(), i2s_get_ring_write_idx(), s_mfcc);
             uint32_t cycles = DWT_CYCCNT - start;
@@ -298,6 +322,9 @@ void vButtonTask(void *pvParameters)
                     argmax = i;
             }
             printf("prediction: %s\r\n", KEYWORD_NAMES[argmax]);
+            uint32_t latency_cycles = DWT_CYCCNT - req.trigger_cycles;
+            printf("end-to-end latency: %lu cycles (%.2f ms)\r\n", (unsigned long)latency_cycles,
+                   (double)latency_cycles / SystemCoreClock * 1000.0);
         }
     }
 }
@@ -419,8 +446,8 @@ int main(void)
     };
     GPIO_Init(GPIOA, 5, ld2_cfg);
 
-    DEMCR |= (1 << 24);   /* TRCENA — enable the trace/debug subsystem */
-    DWT_CTRL |= (1 << 0); /* CYCCNTENA — enable the free-running cycle counter */
+    DEMCR |= (1 << 24);   /* TRCENA */
+    DWT_CTRL |= (1 << 0); /* CYCCNTENA */
     DWT_CYCCNT = 0;
 
     xButtonSemaphore = xSemaphoreCreateBinary();
@@ -430,6 +457,7 @@ int main(void)
 
     xSensorQueue    = xQueueCreate(10, sizeof(SensorData));
     xProcessorQueue = xQueueCreate(10, sizeof(ProcessedData));
+    xButtonQueue    = xQueueCreate(10, sizeof(InferenceRequest));
 
     xWatchdogEvents = xEventGroupCreate();
     configASSERT(xWatchdogEvents != NULL);
@@ -475,7 +503,7 @@ int main(void)
             ;
     }
 
-    xReturned = xTaskCreate(vButtonTask, "Button", configMINIMAL_STACK_SIZE * 4, NULL,
+    xReturned = xTaskCreate(vButtonTask, "Button", configMINIMAL_STACK_SIZE * 1, NULL,
                             tskIDLE_PRIORITY + 1, &xTaskHandle5);
 
     if (xReturned != pdPASS)
@@ -493,8 +521,17 @@ int main(void)
             ;
     }
 
-    xReturned = xTaskCreate(vStatsTask, "Stats", configMINIMAL_STACK_SIZE * 4, NULL,
+    xReturned = xTaskCreate(vStatsTask, "Stats", configMINIMAL_STACK_SIZE * 2, NULL,
                             tskIDLE_PRIORITY + 1, &xTaskHandle7);
+
+    if (xReturned != pdPASS)
+    {
+        for (;;)
+            ;
+    }
+
+    xReturned = xTaskCreate(vInferenceTask, "Inference", configMINIMAL_STACK_SIZE * 2, NULL,
+                            tskIDLE_PRIORITY + 1, &xTaskHandle8);
 
     if (xReturned != pdPASS)
     {
