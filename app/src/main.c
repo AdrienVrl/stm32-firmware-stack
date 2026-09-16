@@ -530,7 +530,7 @@ int main(void)
             ;
     }
 
-    xReturned = xTaskCreate(vInferenceTask, "Inference", configMINIMAL_STACK_SIZE * 2, NULL,
+    xReturned = xTaskCreate(vInferenceTask, "Inference", configMINIMAL_STACK_SIZE * 3, NULL,
                             tskIDLE_PRIORITY + 1, &xTaskHandle8);
 
     if (xReturned != pdPASS)
