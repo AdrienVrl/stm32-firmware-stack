@@ -1,5 +1,5 @@
 # stm32-firmware-stack
-This is a personal project to learn embedded development using a STM32 Nucleo board.  The goal was to be more familiar with STM32 development, FreeRTOS and TFLite/STM32Cuba.Ai.
+This is a personal project to learn embedded development using a STM32 Nucleo board.  The goal was to be more familiar with STM32 development, FreeRTOS and TFLite/STM32Cube.AI.
 
 ## What this project contains 
 This project implements:
@@ -28,7 +28,7 @@ In addition, the project includes unity unit tests, OpenOCD/GDB debugging and Te
 - `vButtonTask`: triggers voice recording on button press, priority 1
 - `vInferenceTask`: processes audio via frontend and network and makes keyword prediction, priority 1
 - `vWatchdogTask`: watches for task misses, priority 5
-`vWatchdogTask` has higher priority to ensure that is reports correct misses on time, `vSensorReaderTask`, `vSensorProcessorTask` and `vHeartBeatTask` have priorities , 3 and 2 respectively to ensure regular peripheral i/o. On the other hand, `vInferenceTask` has a lower priority to prevent it from blocking other tasks during the long audio buffer read. `vButtonTask`, `vSensorOutputTask` and `vStatsTask` share priority 1 since they can be delayed by a `vInferenceTask` after a button press. Indeed, delaying the button task itself should not be an issue (the button shouldn't be pressed twice without inference in between) and the other tasks are just text output.
+`vWatchdogTask` has higher priority to ensure that it reports correct misses on time, `vSensorReaderTask`, `vSensorProcessorTask` and `vHeartBeatTask` have priorities 4, 3 and 2 respectively to ensure regular peripheral i/o. On the other hand, `vInferenceTask` has a lower priority to prevent it from blocking other tasks during the long audio buffer read. `vButtonTask`, `vSensorOutputTask` and `vStatsTask` share priority 1 since they can be delayed by a `vInferenceTask` after a button press. Indeed, delaying the button task itself should not be an issue (the button shouldn't be pressed twice without inference in between) and the other tasks are just text output.
 
 ### Model architecture: DS-CNN-S
 
