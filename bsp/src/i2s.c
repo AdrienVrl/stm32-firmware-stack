@@ -26,7 +26,7 @@
 
 #define SPI3_BASE  0x40003C00UL
 #define SPI3       ((SPI_TypeDef *)SPI3_BASE)
-#define NVIC_ISER0 (*(volatile uintptr_t *)0xE000E100UL)
+#define NVIC_ISER0 (*(volatile uint32_t *)0xE000E100UL)
 #endif
 #define DMA1_BASE        0x40026000UL
 #define DMA1             ((DMA_TypeDef *)DMA1_BASE)
