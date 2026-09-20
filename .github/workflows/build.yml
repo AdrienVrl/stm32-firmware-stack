@@ -166,4 +166,4 @@ jobs:
             --exclude tests/ \
             --exclude third_party/ \
             --exclude build/ \
-            --fail-under-line 0
+            --fail-under-line 68
