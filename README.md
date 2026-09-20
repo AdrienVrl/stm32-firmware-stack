@@ -116,6 +116,7 @@ ctest --test-dir build/host
 All done with DCMAKE_BUILD_TYPE=Release
 
 ## Roadmap
+- Replace button-triggered detection by continuous/streaming detection
 - Improve network accuracy
 - Improve latency and memory usage
 
