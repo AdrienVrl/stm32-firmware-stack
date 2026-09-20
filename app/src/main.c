@@ -10,16 +10,28 @@
 #include "exti.h"
 #include "gpio.h"
 #include "i2c.h"
+#include "i2s.h"
 #include "input_capture.h"
+#include "mel_frontend.h"
+#include "network.h"
+#include "network_data.h"
 #include "pwm.h"
+#include "system_stm32f4xx.h"
 #include "uart.h"
 
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #define GPIOA_BASE 0x40020000UL
 #define GPIOA      ((GPIO_Port *)GPIOA_BASE)
 #define GPIOC_BASE 0x40020800UL
 #define GPIOC      ((GPIO_Port *)GPIOC_BASE)
+#define DEMCR      (*(volatile uint32_t *)0xE000EDFCUL)
+#define DWT_CTRL   (*(volatile uint32_t *)0xE0001000UL)
+#define DWT_CYCCNT (*(volatile uint32_t *)0xE0001004UL)
+
+STAI_ALIGNED(8) static uint8_t ai_ctx[STAI_NETWORK_CONTEXT_SIZE];
+STAI_ALIGNED(8) static uint8_t ai_activations[STAI_NETWORK_ACTIVATIONS_SIZE_BYTES];
 
 TaskHandle_t xTaskHandle1 = NULL;
 TaskHandle_t xTaskHandle2 = NULL;
@@ -28,8 +40,9 @@ TaskHandle_t xTaskHandle4 = NULL;
 TaskHandle_t xTaskHandle5 = NULL;
 TaskHandle_t xTaskHandle6 = NULL;
 TaskHandle_t xTaskHandle7 = NULL;
+TaskHandle_t xTaskHandle8 = NULL;
 
-QueueHandle_t xSensorQueue, xProcessorQueue;
+QueueHandle_t xSensorQueue, xProcessorQueue, xButtonQueue;
 uint32_t sensor_drop_count_snd;
 uint32_t sensor_drop_count_rcv;
 uint32_t processed_drop_count_snd;
@@ -42,6 +55,8 @@ uint32_t processed_drop_count_rcv;
 
 #define WDG_ALL_TASKS_BITS                                                                         \
     (WDG_BIT_SENSOR_READER | WDG_BIT_PROCESSOR | WDG_BIT_OUTPUT | WDG_BIT_HEARTBEAT)
+
+static float s_mfcc[49][10];
 
 EventGroupHandle_t xWatchdogEvents;
 
@@ -60,6 +75,30 @@ typedef struct
     float accel_g[3];
     float gyro_dps[3];
 } ProcessedData;
+
+typedef struct
+{
+    uint32_t trigger_cycles; /* DWT_CYCCNT snapshot */
+} InferenceRequest;
+
+typedef enum
+{
+    KEYWORD_YES     = 0,
+    KEYWORD_NO      = 1,
+    KEYWORD_UP      = 2,
+    KEYWORD_DOWN    = 3,
+    KEYWORD_LEFT    = 4,
+    KEYWORD_RIGHT   = 5,
+    KEYWORD_ON      = 6,
+    KEYWORD_OFF     = 7,
+    KEYWORD_STOP    = 8,
+    KEYWORD_GO      = 9,
+    KEYWORD_UNKNOWN = 10,
+    KEYWORD_SILENCE = 11,
+} keyword_t;
+
+static const char *const KEYWORD_NAMES[] = {"yes", "no",  "up",   "down", "left",    "right",
+                                            "on",  "off", "stop", "go",   "unknown", "silence"};
 
 uint16_t merge(uint8_t low, uint8_t high)
 {
@@ -160,10 +199,10 @@ void vSensorOutputTask(void *pvParameters)
             }
         }
 
-        printf("Accel_x: %f, Accel_y: %f, Accel_z: %f, Gyro_x: %f, Gyro_y: %f, "
+        /* printf("Accel_x: %f, Accel_y: %f, Accel_z: %f, Gyro_x: %f, Gyro_y: %f, "
                "Gyro_z: %f\r\n",
                xData.accel_g[0], xData.accel_g[1], xData.accel_g[2], xData.gyro_dps[0],
-               xData.gyro_dps[1], xData.gyro_dps[2]);
+               xData.gyro_dps[1], xData.gyro_dps[2]); */
 
         xEventGroupSetBits(xWatchdogEvents, WDG_BIT_OUTPUT);
     }
@@ -189,13 +228,15 @@ void vStatsTask(void *pvParameters)
 
     for (;;)
     {
-        printf("HWM Reader=%lu Processor=%lu Output=%lu HeartBeat=%lu Button=%lu Watchdog=%lu\r\n",
+        printf("HWM Reader=%lu Processor=%lu Output=%lu HeartBeat=%lu Button=%lu Watchdog=%lu "
+               "Inference=%lu\r\n",
                (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle1),
                (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle2),
                (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle3),
                (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle4),
                (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle5),
-               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle6));
+               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle6),
+               (unsigned long)uxTaskGetStackHighWaterMark(xTaskHandle8));
 
         printf("HeapSize=%lu FreeHeapSize=%lu\r\n", (unsigned long)xPortGetFreeHeapSize(),
                (unsigned long)xPortGetMinimumEverFreeHeapSize());
@@ -215,7 +256,75 @@ void vButtonTask(void *pvParameters)
     {
         if (xSemaphoreTake(xButtonSemaphore, portMAX_DELAY) == pdTRUE)
         {
-            printf("Button pressed\r\n");
+            printf("Button pressed, please say the command\r\n");
+            vTaskDelay(pdMS_TO_TICKS(1000));
+            if (!i2s_window_ready())
+            {
+                printf("mic window not ready yet\r\n");
+                continue;
+            }
+
+            InferenceRequest req = {.trigger_cycles = DWT_CYCCNT};
+            xQueueSend(xButtonQueue, &req, portMAX_DELAY);
+        }
+    }
+}
+
+void vInferenceTask(void *pvParameters)
+{
+
+    UNUSED(pvParameters);
+    stai_network *network = (stai_network *)ai_ctx;
+    stai_return_code rc;
+
+    for (;;)
+    {
+        InferenceRequest req;
+        if (xQueueReceive(xButtonQueue, &req, portMAX_DELAY) == pdTRUE)
+        {
+            uint32_t start = DWT_CYCCNT;
+            mel_frontend_process(i2s_get_ring(), i2s_get_ring_write_idx(), s_mfcc);
+            uint32_t cycles = DWT_CYCCNT - start;
+            printf("mel_frontend_process: %lu cycles (%.2f ms)\r\n", (unsigned long)cycles,
+                   (double)cycles / SystemCoreClock * 1000.0);
+
+            stai_ptr inputs[STAI_NETWORK_IN_NUM];
+            stai_ptr outputs[STAI_NETWORK_OUT_NUM];
+            stai_size n;
+
+            rc = stai_network_get_inputs(network, inputs, &n);
+            if (rc != STAI_SUCCESS)
+            {
+                printf("get_inputs failed: %d\r\n", (int)rc);
+                continue;
+            }
+            rc = stai_network_get_outputs(network, outputs, &n);
+            if (rc != STAI_SUCCESS)
+            {
+                printf("get_outputs failed: %d\r\n", (int)rc);
+                continue;
+            }
+
+            mel_frontend_quantize((const float(*)[10])s_mfcc, (int8_t *)inputs[0]);
+
+            rc = stai_network_run(network, STAI_MODE_SYNC);
+            if (rc != STAI_SUCCESS)
+            {
+                printf("run failed: rc=%#x\r\n", (unsigned)rc);
+                continue;
+            }
+            stai_network_get_outputs(network, outputs, &n);
+            const int8_t *logits = (const int8_t *)outputs[0];
+            int argmax           = 0;
+            for (int i = 0; i < STAI_NETWORK_OUT_1_SIZE; i++)
+            {
+                if (logits[i] > logits[argmax])
+                    argmax = i;
+            }
+            printf("prediction: %s\r\n", KEYWORD_NAMES[argmax]);
+            uint32_t latency_cycles = DWT_CYCCNT - req.trigger_cycles;
+            printf("end-to-end latency: %lu cycles (%.2f ms)\r\n", (unsigned long)latency_cycles,
+                   (double)latency_cycles / SystemCoreClock * 1000.0);
         }
     }
 }
@@ -247,11 +356,77 @@ void vWatchdogTask(void *pvParameters)
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
     UNUSED(xTask);
-    printf("stack overflow, task: %s", pcTaskName);
+    printf("stack overflow, task: %s\r\n", pcTaskName);
     portDISABLE_INTERRUPTS();
     while (1)
     {
     }
+}
+
+static void ai_network_init(void)
+{
+    stai_network *net = (stai_network *)ai_ctx;
+    stai_return_code rc;
+
+    rc = stai_network_init(net);
+    if (rc != STAI_SUCCESS)
+    {
+        printf("stai init failed: %d\r\n", (int)rc);
+        return;
+    }
+
+    const stai_ptr acts[STAI_NETWORK_ACTIVATIONS_NUM] = {ai_activations};
+    rc = stai_network_set_activations(net, acts, STAI_NETWORK_ACTIVATIONS_NUM);
+    if (rc != STAI_SUCCESS)
+    {
+        printf("set_activations failed: %d\r\n", (int)rc);
+        return;
+    }
+
+    const stai_ptr weights[STAI_NETWORK_WEIGHTS_NUM] = {(stai_ptr)g_network_weights_array};
+    rc = stai_network_set_weights(net, weights, STAI_NETWORK_WEIGHTS_NUM);
+    if (rc != STAI_SUCCESS)
+    {
+        printf("set_weights failed: %d\r\n", (int)rc);
+        return;
+    }
+
+    stai_ptr inputs[STAI_NETWORK_IN_NUM];
+    stai_ptr outputs[STAI_NETWORK_OUT_NUM];
+    stai_size n;
+
+    rc = stai_network_get_inputs(net, inputs, &n);
+    if (rc != STAI_SUCCESS)
+    {
+        printf("get_inputs failed: %d\r\n", (int)rc);
+        return;
+    }
+    rc = stai_network_get_outputs(net, outputs, &n);
+    if (rc != STAI_SUCCESS)
+    {
+        printf("get_outputs failed: %d\r\n", (int)rc);
+        return;
+    }
+
+    memset(inputs[0], 0, STAI_NETWORK_IN_1_SIZE_BYTES);
+
+    rc = stai_network_run(net, STAI_MODE_SYNC);
+    if (rc != STAI_SUCCESS)
+    {
+        printf("run failed: %d\r\n", (int)rc);
+        return;
+    }
+
+    const int8_t *logits = (const int8_t *)outputs[0];
+    int argmax           = 0;
+    for (int i = 0; i < STAI_NETWORK_OUT_1_SIZE; i++)
+    {
+        printf("out[%d] = %d\r\n", i, (int)logits[i]);
+        if (logits[i] > logits[argmax])
+            argmax = i;
+    }
+
+    printf("stai smoke test OK, prediction: %s\r\n", KEYWORD_NAMES[argmax]);
 }
 
 int main(void)
@@ -259,6 +434,8 @@ int main(void)
     uart_init(115200);
     i2c_init(1000);
     i2c_write_reg(0x68, 0x6B, 0x00);
+    i2s_init(I2S_MIC_SLOT_LEFT);
+    i2s_start();
 
     GPIO_Config ld2_cfg = {
         .mode      = GPIO_MODE_OUTPUT,
@@ -269,6 +446,10 @@ int main(void)
     };
     GPIO_Init(GPIOA, 5, ld2_cfg);
 
+    DEMCR |= (1 << 24);   /* TRCENA */
+    DWT_CTRL |= (1 << 0); /* CYCCNTENA */
+    DWT_CYCCNT = 0;
+
     xButtonSemaphore = xSemaphoreCreateBinary();
     ButtonEXTI_Init();
 
@@ -276,6 +457,7 @@ int main(void)
 
     xSensorQueue    = xQueueCreate(10, sizeof(SensorData));
     xProcessorQueue = xQueueCreate(10, sizeof(ProcessedData));
+    xButtonQueue    = xQueueCreate(10, sizeof(InferenceRequest));
 
     xWatchdogEvents = xEventGroupCreate();
     configASSERT(xWatchdogEvents != NULL);
@@ -321,7 +503,7 @@ int main(void)
             ;
     }
 
-    xReturned = xTaskCreate(vButtonTask, "Button", configMINIMAL_STACK_SIZE * 4, NULL,
+    xReturned = xTaskCreate(vButtonTask, "Button", configMINIMAL_STACK_SIZE * 1, NULL,
                             tskIDLE_PRIORITY + 1, &xTaskHandle5);
 
     if (xReturned != pdPASS)
@@ -339,7 +521,7 @@ int main(void)
             ;
     }
 
-    xReturned = xTaskCreate(vStatsTask, "Stats", configMINIMAL_STACK_SIZE * 4, NULL,
+    xReturned = xTaskCreate(vStatsTask, "Stats", configMINIMAL_STACK_SIZE * 2, NULL,
                             tskIDLE_PRIORITY + 1, &xTaskHandle7);
 
     if (xReturned != pdPASS)
@@ -348,6 +530,17 @@ int main(void)
             ;
     }
 
+    xReturned = xTaskCreate(vInferenceTask, "Inference", configMINIMAL_STACK_SIZE * 3, NULL,
+                            tskIDLE_PRIORITY + 1, &xTaskHandle8);
+
+    if (xReturned != pdPASS)
+    {
+        for (;;)
+            ;
+    }
+
+    mel_frontend_init();
+    ai_network_init();
     vTaskStartScheduler();
 
     /* Should never reach here */

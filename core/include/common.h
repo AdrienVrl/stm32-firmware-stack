@@ -91,8 +91,12 @@ void assert_failed(const char *file, uint32_t line);
 // Get the minimum or maximum of two values.
 // Note: evaluates arguments twice — don't use with expressions
 // that have side effects like MIN(i++, j++).
+#ifndef MIN
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#endif
 
 // Bit manipulation
 #define BIT(n)             (1UL << (n))
@@ -116,9 +120,24 @@ void assert_failed(const char *file, uint32_t line);
 // Example: READ_FIELD(GPIOA->MODER, 2, 10) reads bits [11:10]
 #define READ_FIELD(reg, width, shift) (((reg) >> (shift)) & ((1UL << (width)) - 1))
 
+#ifdef UNIT_TEST
+
+static inline void __disable_irq(void)
+{
+}
+static inline void __enable_irq(void)
+{
+}
+
+#elif !defined(__CMSIS_GCC_H)
 __attribute__((always_inline)) static inline void __disable_irq(void)
 {
     __asm volatile("cpsid i" ::: "memory");
+}
+
+__attribute__((always_inline)) static inline void __enable_irq(void)
+{
+    __asm volatile("cpsie i" ::: "memory");
 }
 
 
@@ -126,5 +145,6 @@ __attribute__((always_inline)) static inline void __set_MSP(uint32_t topOfStack)
 {
     __asm volatile("MSR msp, %0" : : "r"(topOfStack) :);
 }
+#endif
 
 #endif // COMMON_H

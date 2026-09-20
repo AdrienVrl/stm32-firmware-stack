@@ -10,3 +10,9 @@
 [submodule "third_party/FreeRTOS-Kernel"]
 	path = third_party/FreeRTOS-Kernel
 	url = https://github.com/FreeRTOS/FreeRTOS-Kernel.git
+[submodule "third_party/CMSIS-DSP"]
+	path = third_party/CMSIS-DSP
+	url = https://github.com/ARM-software/CMSIS-DSP.git
+[submodule "third_party/CMSIS-Core"]
+	path = third_party/CMSIS-Core
+	url = https://github.com/STMicroelectronics/cmsis-core.git

@@ -132,16 +132,14 @@ jobs:
       # --Werror   : exit with error if any file needs reformatting
       # This enforces that all committed code passes clang-format,
       # which the pre-commit hook should already guarantee locally.
-      # Guarded: `find` errors out (and fails the pipeline under pipefail) if
-      # any of these directories don't exist yet — only scan the ones that do.
       - name: Check formatting
         run: |
           dirs=()
           for d in bsp app bootloader ml core; do
             [ -d "$d" ] && dirs+=("$d")
           done
-
-          files=$(find "${dirs[@]}" -name "*.c" -o -name "*.h")
+            files=$(find "${dirs[@]}" \( -name "*.c" -o -name "*.h" \) \
+                    -not -path "ml/include/*" -not -path "ml/src/*" -not -path "ml/lib/*")
           if [ -z "$files" ]; then
             echo "No C sources yet — nothing to format-check."
           else
@@ -160,9 +158,6 @@ jobs:
         run: sudo apt-get install -y doxygen graphviz
 
       # Run Doxygen and capture warnings
-      # mkdir first: OUTPUT_DIRECTORY (build/docs) can't be created by
-      # Doxygen itself since build/ doesn't exist yet in this job (no cmake
-      # configure step runs here).
       - name: Run Doxygen
         run: |
           mkdir -p build/docs

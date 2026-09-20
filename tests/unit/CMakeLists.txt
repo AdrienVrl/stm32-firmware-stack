@@ -148,8 +148,15 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/mocks/mock_registers.c)
   endif()
 
   if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_mel_frontend.c)
-    add_unit_test(NAME test_mel_frontend SOURCES test_mel_frontend.c
-                  ${CMAKE_SOURCE_DIR}/ml/src/mel_frontend.c)
+    add_unit_test(
+      NAME
+      test_mel_frontend
+      SOURCES
+      test_mel_frontend.c
+      ${CMAKE_SOURCE_DIR}/ml/src/mel_frontend.c
+      LIBS
+      CMSISDSP
+      m)
   endif()
 
 else()

@@ -56,6 +56,7 @@ function(arm_add_debug_target target)
   add_custom_target(
     debug_${target}
     COMMAND openocd -f interface/stlink.cfg -f target/stm32f4x.cfg
+    DEPENDS ${target}
     COMMENT "Starting OpenOCD GDB server for ${target} on port 3333")
 endfunction()
 
@@ -109,7 +110,7 @@ function(arm_add_firmware)
   add_executable(${ARG_NAME} ${ARG_SOURCES})
   target_include_directories(${ARG_NAME} PRIVATE ${ARG_INCLUDES})
 
-  target_link_libraries(${ARG_NAME} PRIVATE ${ARG_LIBS})
+  target_link_libraries(${ARG_NAME} PRIVATE ${ARG_LIBS} m)
 
   target_link_options(${ARG_NAME} PRIVATE -T${ARG_LINKER}
                       -Wl,-Map=${CMAKE_BINARY_DIR}/${ARG_NAME}.map)

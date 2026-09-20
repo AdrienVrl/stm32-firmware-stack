@@ -34,3 +34,9 @@ __pycache__/
 
 # OpenOCD
 *.cfg.bak
+
+#compiled ml network
+st_ai_ws/
+
+# Downloaded training/reference datasets
+ml/training/data/
