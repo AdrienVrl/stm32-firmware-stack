@@ -49,9 +49,6 @@ jobs:
 
       # ── 6. Capture binary sizes and save as artifact ────────────────────────
       # This lets you track flash/RAM growth over time across commits.
-      # Guarded: no firmware/bootloader executables exist yet, so this
-      # becomes a real report automatically once arm_add_firmware() targets
-      # (app/bootloader) land.
       - name: Report binary sizes
         run: |
           shopt -s nullglob
@@ -156,9 +153,6 @@ jobs:
             coverage-details/
 
       # ── Fail if coverage drops below threshold ───────────────────────────────
-      # No BSP/core sources are compiled into the host build yet, so there's
-      # nothing to measure — threshold is 0 until real unit tests land, then
-      # raise it.
       - name: Check coverage threshold
         run: |
           gcovr \
