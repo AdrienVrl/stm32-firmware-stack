@@ -107,12 +107,12 @@ ctest --test-dir build/host
 - Quantized model test accuracy: 0.8044
 - flash footprint: 23896 B bootloader, 254672 B app
 - RAM footprint: 2624 B bootloader, 85248 B app
+- frontend audio processing: ~166.56ms
+- end to end keyword spotting latency: ~216.17 ms
+All done with DCMAKE_BUILD_TYPE=Release
 
 ## Roadmap
 - Improve network accuracy
 - Improve latency and memory usage
-- frontend audio processing: ~166.56ms
-- end to end keyword spotting latency: ~216.17 ms
-All done with DCMAKE_BUILD_TYPE=Release
 
 
