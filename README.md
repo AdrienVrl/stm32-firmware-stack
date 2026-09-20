@@ -30,6 +30,8 @@ In addition, the project includes unity unit tests, OpenOCD/GDB debugging and Te
 - `vWatchdogTask`: watches for task misses, priority 5
 `vWatchdogTask` has higher priority to ensure that it reports correct misses on time, `vSensorReaderTask`, `vSensorProcessorTask` and `vHeartBeatTask` have priorities 4, 3 and 2 respectively to ensure regular peripheral i/o. On the other hand, `vInferenceTask` has a lower priority to prevent it from blocking other tasks during the long audio buffer read. `vButtonTask`, `vSensorOutputTask` and `vStatsTask` share priority 1 since they can be delayed by a `vInferenceTask` after a button press. Indeed, delaying the button task itself should not be an issue (the button shouldn't be pressed twice without inference in between) and the other tasks are just text output.
 
+See [FreeRTOS task graph](docs/task_graph.md) for details.
+
 ### Model architecture: DS-CNN-S
 
 | Layer | Config |
@@ -66,7 +68,9 @@ design — chosen so the on-device CMSIS-DSP feature pipeline could match a well
 - application memory usage:
 `` Memory region       Used Size  Region Size  %age Used
            FLASH:      254672 B       480 KB     51.81%
-            SRAM:       85248 B       128 KB     65.04%`` 
+            SRAM:       85248 B       128 KB     65.04%``
+  
+See [memory map](docs/memory_map.md) for details.
 
 ## Build and flash instructions
 Requirements:
