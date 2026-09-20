@@ -56,6 +56,7 @@ function(arm_add_debug_target target)
   add_custom_target(
     debug_${target}
     COMMAND openocd -f interface/stlink.cfg -f target/stm32f4x.cfg
+    DEPENDS ${target}
     COMMENT "Starting OpenOCD GDB server for ${target} on port 3333")
 endfunction()
 
